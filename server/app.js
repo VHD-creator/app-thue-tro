@@ -15,6 +15,7 @@ console.log('DB_USER:', process.env.DB_USER);
 import sequelize from './config/database.js';
 import indexRouter from './routes/index.js';
 import usersRouter from './routes/users.js';
+import adminRouter from './routes/admin.js';
 import phongRouter from './routes/phong.js';
 import nguoiThueRouter from './routes/nguoiThue.js';
 import hoaDonRouter from './routes/hoaDon.js';
@@ -59,6 +60,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Routes
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
+app.use('/api/admin', adminRouter);
 app.use('/api/phong', phongRouter);
 app.use('/api/nguoiThue', nguoiThueRouter);
 app.use('/api/hoaDon', hoaDonRouter);

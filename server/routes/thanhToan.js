@@ -47,6 +47,24 @@ router.get('/', checkUser, checkAdminRole, async (req, res) => {
   }
 });
 
+// API lấy danh sách thanh toán theo hóa đơn - Đặt trước /:id_thanh_toan
+router.get('/hoa_don/:id_hoa_don', checkUser, async (req, res) => {
+  try {
+    const id_hoa_don = req.params.id_hoa_don;
+    
+    const thanhToans = await ThanhToan.findAll({
+      where: { id_hoa_don },
+      include: [
+        { model: HoaDon, as: 'HoaDon' }
+      ]
+    });
+    
+    res.json({ success: true, data: thanhToans });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Lấy thanh toán theo ID
 router.get('/:id_thanh_toan', checkUser, async (req, res) => {
   try {
@@ -102,24 +120,6 @@ router.delete('/:id_thanh_toan', checkUser, checkAdminRole, async (req, res) => 
     } else {
       res.status(404).json({ success: false, message: 'Thanh toán không tồn tại' });
     }
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// API lấy danh sách thanh toán theo hóa đơn của phòng
-router.get('/hoa_don/:id_hoa_don', checkUser, async (req, res) => {
-  try {
-    const id_hoa_don = req.params.id_hoa_don;
-    
-    const thanhToans = await ThanhToan.findAll({
-      where: { id_hoa_don },
-      include: [
-        { model: HoaDon, as: 'HoaDon' }
-      ]
-    });
-    
-    res.json({ success: true, data: thanhToans });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

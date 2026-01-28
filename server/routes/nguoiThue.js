@@ -92,18 +92,4 @@ router.delete('/:id_nguoi_thue', checkUser, checkAdminRole, async (req, res) => 
   }
 });
 
-// Xóa người thuê (Admin only)
-router.delete('/:id', checkUser, checkAdminRole, async (req, res) => {
-  try {
-    const deleted = await NguoiThue.destroy({ where: { id: req.params.id } });
-    if (deleted) {
-      res.json({ success: true, message: 'Người thuê đã được xóa' });
-    } else {
-      res.status(404).json({ success: false, message: 'Người thuê không tồn tại' });
-    }
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
 export default router;
