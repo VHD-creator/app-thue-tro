@@ -2,46 +2,33 @@ import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 
 const ThanhToan = sequelize.define('ThanhToan', {
-  id: {
+  id_thanh_toan: {
     type: DataTypes.INTEGER,
     primaryKey: true,
-    autoIncrement: true,
+    autoIncrement: true
   },
-  billId: {
+  id_hoa_don: {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'hoadon',
-      key: 'id',
-    },
+      model: 'hoa_don',
+      key: 'id_hoa_don'
+    }
   },
-  tenantId: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: 'nguoithue',
-      key: 'id',
-    },
+  so_tien: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: false
   },
-  amount: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
-  },
-  paymentDate: {
+  ngay_thanh_toan: {
     type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW,
+    defaultValue: DataTypes.NOW
   },
-  method: {
-    type: DataTypes.ENUM('cash', 'bank_transfer', 'credit_card'),
-    allowNull: false,
-  },
-  notes: {
-    type: DataTypes.TEXT,
-  },
+  hinh_thuc: {
+    type: DataTypes.STRING(50)
+  }
 }, {
-  timestamps: true,
-  freezeTableName: true,
-  tableName: 'thanhtoan'
+  tableName: 'thanh_toan',
+  timestamps: false
 });
 
 export default ThanhToan;

@@ -2,48 +2,41 @@ import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 
 const NguoiThue = sequelize.define('NguoiThue', {
-  id: {
+  id_nguoi_thue: {
     type: DataTypes.INTEGER,
     primaryKey: true,
-    autoIncrement: true,
+    autoIncrement: true
   },
-  name: {
-    type: DataTypes.STRING,
-    allowNull: false,
+  ho_ten: {
+    type: DataTypes.STRING(100),
+    allowNull: false
+  },
+  cccd: {
+    type: DataTypes.STRING(20)
+  },
+  so_dien_thoai: {
+    type: DataTypes.STRING(15)
   },
   email: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    unique: true,
+    type: DataTypes.STRING(100)
   },
-  phone: {
-    type: DataTypes.STRING,
-    allowNull: false,
+  ngay_vao: {
+    type: DataTypes.DATE
   },
-  roomId: {
+  ngay_ra: {
+    type: DataTypes.DATE
+  },
+  id_tai_khoan: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    unique: true,
     references: {
-      model: 'Rooms',
-      key: 'id',
-    },
-  },
-  leaseStart: {
-    type: DataTypes.DATE,
-    allowNull: false,
-  },
-  leaseEnd: {
-    type: DataTypes.DATE,
-    allowNull: false,
-  },
-  status: {
-    type: DataTypes.ENUM('active', 'inactive'),
-    defaultValue: 'active',
-  },
+      model: 'tai_khoan',
+      key: 'id_tai_khoan'
+    }
+  }
 }, {
-  timestamps: true,
-  freezeTableName: true,
-  tableName: 'nguoithue'
+  tableName: 'nguoi_thue',
+  timestamps: false
 });
 
 export default NguoiThue;

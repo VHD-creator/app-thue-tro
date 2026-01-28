@@ -5,13 +5,40 @@ import NguoiThue from '../models/NguoiThue.js';
 
 const router = express.Router();
 
-// Lấy tất cả thanh toán
-router.get('/', async (req, res) => {
+// Middleware check user - kiểm tra xác minh người dùng
+const checkUser = async (req, res, next) => {
+  try {
+    // Kiểm tra xem user có được authentication hay không
+    if (!req.user && !req.session?.userId) {
+      return res.status(401).json({ success: false, message: 'Vui lòng đăng nhập' });
+    }
+    next();
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Middleware check admin role - phân quyền người dùng
+const checkAdminRole = async (req, res, next) => {
+  try {
+    const userId = req.user?.id_tai_khoan || req.session?.userId;
+    const user = await NguoiThue.findByPk(userId, { raw: true });
+    
+    if (!user) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền truy cập' });
+    }
+    next();
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Lấy tất cả thanh toán (Admin only)
+router.get('/', checkUser, checkAdminRole, async (req, res) => {
   try {
     const thanhToans = await ThanhToan.findAll({
       include: [
-        { model: HoaDon, as: 'HoaDon' },
-        { model: NguoiThue, as: 'NguoiThue' }
+        { model: HoaDon, as: 'HoaDon' }
       ]
     });
     res.json({ success: true, data: thanhToans });
@@ -21,12 +48,11 @@ router.get('/', async (req, res) => {
 });
 
 // Lấy thanh toán theo ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', checkUser, async (req, res) => {
   try {
     const thanhToan = await ThanhToan.findByPk(req.params.id, {
       include: [
-        { model: HoaDon, as: 'HoaDon' },
-        { model: NguoiThue, as: 'NguoiThue' }
+        { model: HoaDon, as: 'HoaDon' }
       ]
     });
     if (!thanhToan) {
@@ -39,12 +65,12 @@ router.get('/:id', async (req, res) => {
 });
 
 // Tạo thanh toán mới
-router.post('/', async (req, res) => {
+router.post('/', checkUser, async (req, res) => {
   try {
     const thanhToan = await ThanhToan.create(req.body);
 
-    // Cập nhật trạng thái hóa đơn thành 'paid'
-    await HoaDon.update({ status: 'paid' }, { where: { id: req.body.billId } });
+    // Cập nhật trạng thái hóa đơn thành '1' (Đã trả)
+    await HoaDon.update({ trang_thai: 1 }, { where: { id_hoa_don: req.body.id_hoa_don } });
 
     res.status(201).json({ success: true, data: thanhToan });
   } catch (error) {
@@ -53,7 +79,7 @@ router.post('/', async (req, res) => {
 });
 
 // Cập nhật thanh toán
-router.put('/:id', async (req, res) => {
+router.put('/:id', checkUser, checkAdminRole, async (req, res) => {
   try {
     const [updated] = await ThanhToan.update(req.body, { where: { id: req.params.id } });
     if (updated) {
@@ -68,7 +94,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Xóa thanh toán
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', checkUser, checkAdminRole, async (req, res) => {
   try {
     const deleted = await ThanhToan.destroy({ where: { id: req.params.id } });
     if (deleted) {
@@ -76,6 +102,27 @@ router.delete('/:id', async (req, res) => {
     } else {
       res.status(404).json({ success: false, message: 'Thanh toán không tồn tại' });
     }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// API lấy danh sách thanh toán theo hóa đơn của phòng
+router.get('/phong/:id_phong', checkUser, async (req, res) => {
+  try {
+    const id_phong = req.params.id_phong;
+    
+    const thanhToans = await ThanhToan.findAll({
+      include: [
+        { 
+          model: HoaDon, 
+          as: 'HoaDon',
+          where: { id_phong: id_phong }
+        }
+      ]
+    });
+    
+    res.json({ success: true, data: thanhToans });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

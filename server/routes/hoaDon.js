@@ -5,12 +5,38 @@ import Phong from '../models/Phong.js';
 
 const router = express.Router();
 
-// Lấy tất cả hóa đơn
-router.get('/', async (req, res) => {
+// Middleware check user
+const checkUser = async (req, res, next) => {
+  try {
+    if (!req.user && !req.session?.userId) {
+      return res.status(401).json({ success: false, message: 'Vui lòng đăng nhập' });
+    }
+    next();
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Middleware check admin role
+const checkAdminRole = async (req, res, next) => {
+  try {
+    const userId = req.user?.id_tai_khoan || req.session?.userId;
+    const user = await NguoiThue.findByPk(userId, { raw: true });
+    
+    if (!user) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền truy cập' });
+    }
+    next();
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Lấy tất cả hóa đơn (Admin only)
+router.get('/', checkUser, checkAdminRole, async (req, res) => {
   try {
     const hoaDons = await HoaDon.findAll({
       include: [
-        { model: NguoiThue, as: 'NguoiThue' },
         { model: Phong, as: 'Phong' }
       ]
     });
@@ -21,11 +47,10 @@ router.get('/', async (req, res) => {
 });
 
 // Lấy hóa đơn theo ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', checkUser, async (req, res) => {
   try {
     const hoaDon = await HoaDon.findByPk(req.params.id, {
       include: [
-        { model: NguoiThue, as: 'NguoiThue' },
         { model: Phong, as: 'Phong' }
       ]
     });
@@ -38,8 +63,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Tạo hóa đơn mới
-router.post('/', async (req, res) => {
+// Tạo hóa đơn mới (Admin only)
+router.post('/', checkUser, checkAdminRole, async (req, res) => {
   try {
     const hoaDon = await HoaDon.create(req.body);
     res.status(201).json({ success: true, data: hoaDon });
@@ -48,8 +73,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Cập nhật hóa đơn
-router.put('/:id', async (req, res) => {
+// Cập nhật hóa đơn (Admin only)
+router.put('/:id', checkUser, checkAdminRole, async (req, res) => {
   try {
     const [updated] = await HoaDon.update(req.body, { where: { id: req.params.id } });
     if (updated) {
@@ -63,8 +88,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Xóa hóa đơn
-router.delete('/:id', async (req, res) => {
+// Xóa hóa đơn (Admin only)
+router.delete('/:id', checkUser, checkAdminRole, async (req, res) => {
   try {
     const deleted = await HoaDon.destroy({ where: { id: req.params.id } });
     if (deleted) {

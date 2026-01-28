@@ -3,10 +3,37 @@ import NguoiThue from '../models/NguoiThue.js';
 
 const router = express.Router();
 
-// Lấy tất cả người thuê
-router.get('/', async (req, res) => {
+// Middleware check user
+const checkUser = async (req, res, next) => {
   try {
-    const tenants = await NguoiThue.findAll({ include: ['Phong'] });
+    if (!req.user && !req.session?.userId) {
+      return res.status(401).json({ success: false, message: 'Vui lòng đăng nhập' });
+    }
+    next();
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Middleware check admin role
+const checkAdminRole = async (req, res, next) => {
+  try {
+    const userId = req.user?.id_tai_khoan || req.session?.userId;
+    const user = await NguoiThue.findByPk(userId, { raw: true });
+    
+    if (!user) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền truy cập' });
+    }
+    next();
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Lấy tất cả người thuê (Admin only)
+router.get('/', checkUser, checkAdminRole, async (req, res) => {
+  try {
+    const tenants = await NguoiThue.findAll();
     res.json({ success: true, data: tenants });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -14,7 +41,7 @@ router.get('/', async (req, res) => {
 });
 
 // Lấy người thuê theo ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', checkUser, async (req, res) => {
   try {
     const tenant = await NguoiThue.findByPk(req.params.id, { include: ['Phong'] });
     if (!tenant) {
@@ -26,8 +53,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Tạo người thuê mới
-router.post('/', async (req, res) => {
+// Tạo người thuê mới (Admin only)
+router.post('/', checkUser, checkAdminRole, async (req, res) => {
   try {
     const tenant = await NguoiThue.create(req.body);
     res.status(201).json({ success: true, data: tenant });
@@ -36,8 +63,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Cập nhật người thuê
-router.put('/:id', async (req, res) => {
+// Cập nhật người thuê (Admin only)
+router.put('/:id', checkUser, checkAdminRole, async (req, res) => {
   try {
     const [updated] = await NguoiThue.update(req.body, { where: { id: req.params.id } });
     if (updated) {
@@ -51,8 +78,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Xóa người thuê
-router.delete('/:id', async (req, res) => {
+// Xóa người thuê (Admin only)
+router.delete('/:id', checkUser, checkAdminRole, async (req, res) => {
   try {
     const deleted = await NguoiThue.destroy({ where: { id: req.params.id } });
     if (deleted) {
