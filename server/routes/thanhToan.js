@@ -48,9 +48,9 @@ router.get('/', checkUser, checkAdminRole, async (req, res) => {
 });
 
 // Lấy thanh toán theo ID
-router.get('/:id', checkUser, async (req, res) => {
+router.get('/:id_thanh_toan', checkUser, async (req, res) => {
   try {
-    const thanhToan = await ThanhToan.findByPk(req.params.id, {
+    const thanhToan = await ThanhToan.findByPk(req.params.id_thanh_toan, {
       include: [
         { model: HoaDon, as: 'HoaDon' }
       ]
@@ -79,11 +79,11 @@ router.post('/', checkUser, async (req, res) => {
 });
 
 // Cập nhật thanh toán
-router.put('/:id', checkUser, checkAdminRole, async (req, res) => {
+router.put('/:id_thanh_toan', checkUser, checkAdminRole, async (req, res) => {
   try {
-    const [updated] = await ThanhToan.update(req.body, { where: { id: req.params.id } });
+    const [updated] = await ThanhToan.update(req.body, { where: { id_thanh_toan: req.params.id_thanh_toan } });
     if (updated) {
-      const updatedThanhToan = await ThanhToan.findByPk(req.params.id);
+      const updatedThanhToan = await ThanhToan.findByPk(req.params.id_thanh_toan);
       res.json({ success: true, data: updatedThanhToan });
     } else {
       res.status(404).json({ success: false, message: 'Thanh toán không tồn tại' });
@@ -94,9 +94,9 @@ router.put('/:id', checkUser, checkAdminRole, async (req, res) => {
 });
 
 // Xóa thanh toán
-router.delete('/:id', checkUser, checkAdminRole, async (req, res) => {
+router.delete('/:id_thanh_toan', checkUser, checkAdminRole, async (req, res) => {
   try {
-    const deleted = await ThanhToan.destroy({ where: { id: req.params.id } });
+    const deleted = await ThanhToan.destroy({ where: { id_thanh_toan: req.params.id_thanh_toan } });
     if (deleted) {
       res.json({ success: true, message: 'Thanh toán đã được xóa' });
     } else {
@@ -108,17 +108,14 @@ router.delete('/:id', checkUser, checkAdminRole, async (req, res) => {
 });
 
 // API lấy danh sách thanh toán theo hóa đơn của phòng
-router.get('/phong/:id_phong', checkUser, async (req, res) => {
+router.get('/hoa_don/:id_hoa_don', checkUser, async (req, res) => {
   try {
-    const id_phong = req.params.id_phong;
+    const id_hoa_don = req.params.id_hoa_don;
     
     const thanhToans = await ThanhToan.findAll({
+      where: { id_hoa_don },
       include: [
-        { 
-          model: HoaDon, 
-          as: 'HoaDon',
-          where: { id_phong: id_phong }
-        }
+        { model: HoaDon, as: 'HoaDon' }
       ]
     });
     

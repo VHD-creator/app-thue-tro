@@ -1,5 +1,13 @@
 import sequelize from './config/database.js';
 import './models/quanHe.js';
+import './models/ChuTro.js';
+import './models/HoaDon.js'
+import './models/HopDong.js';
+import './models/NguoiThue.js';
+import './models/Phong.js';
+import './models/quanHe.js';
+import './models/TaiKhoan.js';
+import './models/ThanhToan.js';
 
 const syncDatabase = async () => {
   try {

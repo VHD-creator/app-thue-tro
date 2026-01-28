@@ -31,8 +31,8 @@ const checkAdminRole = async (req, res, next) => {
   }
 };
 
-// ✅ Danh sách phòng trống (trang_thai = 0)
-router.get('/trong', checkUser, async (req, res) => {
+// ✅ Danh sách phòng trống (trang_thai = 0) - Không cần đăng nhập
+router.get('/trong', async (req, res) => {
   try {
     const dsPhongTrong = await Phong.findAll({
       where: {
@@ -53,8 +53,8 @@ router.get('/trong', checkUser, async (req, res) => {
   }
 });
 
-// ✅ Tất cả phòng (Admin only)
-router.get('/', checkUser, checkAdminRole, async (req, res) => {
+// ✅ Tất cả phòng - Không cần đăng nhập
+router.get('/', async (req, res) => {
   try {
     const data = await Phong.findAll();
     res.json({ success: true, data });
@@ -64,9 +64,9 @@ router.get('/', checkUser, checkAdminRole, async (req, res) => {
 });
 
 // Lấy phòng theo ID
-router.get('/:id', checkUser, async (req, res) => {
+router.get('/:id_phong', checkUser, async (req, res) => {
   try {
-    const room = await Phong.findByPk(req.params.id);
+    const room = await Phong.findByPk(req.params.id_phong);
     if (!room) {
       return res.status(404).json({ success: false, message: 'Phòng không tồn tại' });
     }
@@ -87,11 +87,11 @@ router.post('/', checkUser, checkAdminRole, async (req, res) => {
 });
 
 // Cập nhật phòng (Admin only)
-router.put('/:id', checkUser, checkAdminRole, async (req, res) => {
+router.put('/:id_phong', checkUser, checkAdminRole, async (req, res) => {
   try {
-    const [updated] = await Phong.update(req.body, { where: { id: req.params.id } });
+    const [updated] = await Phong.update(req.body, { where: { id_phong: req.params.id_phong } });
     if (updated) {
-      const updatedRoom = await Phong.findByPk(req.params.id);
+      const updatedRoom = await Phong.findByPk(req.params.id_phong);
       res.json({ success: true, data: updatedRoom });
     } else {
       res.status(404).json({ success: false, message: 'Phòng không tồn tại' });
@@ -102,9 +102,9 @@ router.put('/:id', checkUser, checkAdminRole, async (req, res) => {
 });
 
 // Xóa phòng (Admin only)
-router.delete('/:id', checkUser, checkAdminRole, async (req, res) => {
+router.delete('/:id_phong', checkUser, checkAdminRole, async (req, res) => {
   try {
-    const deleted = await Phong.destroy({ where: { id: req.params.id } });
+    const deleted = await Phong.destroy({ where: { id_phong: req.params.id_phong } });
     if (deleted) {
       res.json({ success: true, message: 'Phòng đã được xóa' });
     } else {

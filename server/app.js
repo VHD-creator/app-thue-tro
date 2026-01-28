@@ -20,6 +20,16 @@ import nguoiThueRouter from './routes/nguoiThue.js';
 import hoaDonRouter from './routes/hoaDon.js';
 import thanhToanRouter from './routes/thanhToan.js';
 import baoCaoRouter from './routes/baoCao.js';
+
+// Import models để tạo associations
+import Phong from './models/Phong.js';
+import HoaDon from './models/HoaDon.js';
+import ThanhToan from './models/ThanhToan.js';
+import NguoiThue from './models/NguoiThue.js';
+import ChuTro from './models/ChuTro.js';
+import HopDong from './models/HopDong.js';
+import TaiKhoan from './models/TaiKhoan.js';
+
 import './models/quanHe.js';
 import './services/scheduler.js';
 

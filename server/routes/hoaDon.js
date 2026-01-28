@@ -47,9 +47,9 @@ router.get('/', checkUser, checkAdminRole, async (req, res) => {
 });
 
 // Lấy hóa đơn theo ID
-router.get('/:id', checkUser, async (req, res) => {
+router.get('/:id_hoa_don', checkUser, async (req, res) => {
   try {
-    const hoaDon = await HoaDon.findByPk(req.params.id, {
+    const hoaDon = await HoaDon.findByPk(req.params.id_hoa_don, {
       include: [
         { model: Phong, as: 'Phong' }
       ]
@@ -74,11 +74,11 @@ router.post('/', checkUser, checkAdminRole, async (req, res) => {
 });
 
 // Cập nhật hóa đơn (Admin only)
-router.put('/:id', checkUser, checkAdminRole, async (req, res) => {
+router.put('/:id_hoa_don', checkUser, checkAdminRole, async (req, res) => {
   try {
-    const [updated] = await HoaDon.update(req.body, { where: { id: req.params.id } });
+    const [updated] = await HoaDon.update(req.body, { where: { id_hoa_don: req.params.id_hoa_don } });
     if (updated) {
-      const updatedHoaDon = await HoaDon.findByPk(req.params.id);
+      const updatedHoaDon = await HoaDon.findByPk(req.params.id_hoa_don);
       res.json({ success: true, data: updatedHoaDon });
     } else {
       res.status(404).json({ success: false, message: 'Hóa đơn không tồn tại' });
@@ -89,9 +89,9 @@ router.put('/:id', checkUser, checkAdminRole, async (req, res) => {
 });
 
 // Xóa hóa đơn (Admin only)
-router.delete('/:id', checkUser, checkAdminRole, async (req, res) => {
+router.delete('/:id_hoa_don', checkUser, checkAdminRole, async (req, res) => {
   try {
-    const deleted = await HoaDon.destroy({ where: { id: req.params.id } });
+    const deleted = await HoaDon.destroy({ where: { id_hoa_don: req.params.id_hoa_don } });
     if (deleted) {
       res.json({ success: true, message: 'Hóa đơn đã được xóa' });
     } else {
@@ -102,28 +102,27 @@ router.delete('/:id', checkUser, checkAdminRole, async (req, res) => {
   }
 });
 
-// Tính toán hóa đơn tự động cho người thuê
-router.post('/tinhHoaDon/:tenantId', async (req, res) => {
+// Tính toán hóa đơn tự động cho phòng
+router.post('/tinh/:id_phong', async (req, res) => {
   try {
-    const { tenantId } = req.params;
-    const { month, year } = req.body;
+    const { id_phong } = req.params;
+    const { thang_nam } = req.body;
 
-    // Lấy thông tin người thuê và phòng
-    const nguoiThue = await NguoiThue.findByPk(tenantId, { include: [{ model: Phong, as: 'Phong' }] });
-    if (!nguoiThue) {
-      return res.status(404).json({ success: false, message: 'Người thuê không tồn tại' });
+    // Lấy thông tin phòng
+    const phong = await Phong.findByPk(id_phong);
+    if (!phong) {
+      return res.status(404).json({ success: false, message: 'Phòng không tồn tại' });
     }
-
-    const phong = nguoiThue.Phong;
-    const soTien = phong.price; // Giả sử giá phòng là tiền thuê hàng tháng
 
     // Tạo hóa đơn mới
     const hoaDon = await HoaDon.create({
-      tenantId,
-      roomId: phong.id,
-      amount: soTien,
-      dueDate: new Date(year, month - 1, 1), // Ngày 1 của tháng
-      description: `Hóa đơn thuê phòng tháng ${month}/${year}`
+      id_phong,
+      thang_nam,
+      so_dien_cu: 0,
+      so_dien_moi: 0,
+      so_nuoc_cu: 0,
+      so_nuoc_moi: 0,
+      tien_phong: phong.gia_phong
     });
 
     res.status(201).json({ success: true, data: hoaDon });
