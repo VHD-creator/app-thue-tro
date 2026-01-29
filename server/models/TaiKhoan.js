@@ -1,37 +1,31 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 
-const TaiKhoan = sequelize.define('TaiKhoan', {
-  id_tai_khoan: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
+const TaiKhoan = sequelize.define(
+  'TaiKhoan',
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
   },
-  ten_dang_nhap: {
-    type: DataTypes.STRING(50),
-    allowNull: false,
-    unique: true
-  },
-  mat_khau: {
-    type: DataTypes.STRING(255),
-    allowNull: false
-  },
-  vai_tro: {
-    type: DataTypes.STRING(20),
-    allowNull: false,
-    comment: 'CHU_TRO / NGUOI_THUE'
-  },
-  trang_thai: {
-    type: DataTypes.INTEGER,
-    defaultValue: 1
-  },
-  ngay_tao: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
+  {
+    tableName: 'tai_khoan',
+    timestamps: false,
+    freezeTableName: true, // ⭐ thêm để Sequelize không tự đổi tên bảng
   }
-}, {
-  tableName: 'tai_khoan',
-  timestamps: false
-});
+);
 
 export default TaiKhoan;
