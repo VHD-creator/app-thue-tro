@@ -1,94 +1,164 @@
 import express from 'express';
 import NguoiThue from '../models/NguoiThue.js';
+import { 
+  verifyToken,
+  requireChuTroOrAdmin, 
+  requireAuthenticated 
+} from '../middlewares/auth.js';
 
 const router = express.Router();
 
-// Middleware check user
-const checkUser = async (req, res, next) => {
+// GET /api/nguoiThue - Lấy danh sách người thuê (Chủ trọ/Admin)
+router.get('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
   try {
-    if (!req.user && !req.session?.userId) {
-      return res.status(401).json({ success: false, message: 'Vui lòng đăng nhập' });
-    }
-    next();
+    const tenants = await NguoiThue.findAll({
+      order: [['ngay_vao', 'DESC']]
+    });
+    res.json(tenants);
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// Middleware check admin role
-const checkAdminRole = async (req, res, next) => {
-  try {
-    const userId = req.user?.id_tai_khoan || req.session?.userId;
-    const user = await NguoiThue.findByPk(userId, { raw: true });
-    
-    if (!user) {
-      return res.status(403).json({ success: false, message: 'Bạn không có quyền truy cập' });
-    }
-    next();
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// Lấy tất cả người thuê (Admin only)
-router.get('/', checkUser, checkAdminRole, async (req, res) => {
-  try {
-    const tenants = await NguoiThue.findAll();
-    res.json({ success: true, data: tenants });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Lấy người thuê theo ID
-router.get('/:id_nguoi_thue', checkUser, async (req, res) => {
+// GET /api/nguoiThue/:id_nguoi_thue - Chi tiết người thuê (Auth required)
+router.get('/:id_nguoi_thue', verifyToken, requireAuthenticated, async (req, res) => {
   try {
     const tenant = await NguoiThue.findByPk(req.params.id_nguoi_thue);
+    
     if (!tenant) {
-      return res.status(404).json({ success: false, message: 'Người thuê không tồn tại' });
+      return res.status(404).json({ error: 'Người thuê không tồn tại' });
     }
-    res.json({ success: true, data: tenant });
+
+    // Người thuê chỉ xem được thông tin của mình
+    if (req.userRole === 'NGUOI_THUE') {
+      const selfTenant = await NguoiThue.findOne({ 
+        where: { id_tai_khoan: req.userId } 
+      });
+      
+      if (!selfTenant || selfTenant.id_nguoi_thue !== tenant.id_nguoi_thue) {
+        return res.status(403).json({ error: 'Bạn chỉ có thể xem thông tin của mình' });
+      }
+    }
+
+    res.json(tenant);
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Tạo người thuê mới (Admin only)
-router.post('/', checkUser, checkAdminRole, async (req, res) => {
+// POST /api/nguoiThue - Tạo người thuê mới (Chủ trọ/Admin)
+router.post('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
   try {
-    const tenant = await NguoiThue.create(req.body);
-    res.status(201).json({ success: true, data: tenant });
+    const { ho_ten, cccd, so_dien_thoai, email, ngay_vao, ngay_ra, id_tai_khoan } = req.body;
+
+    // Validation
+    if (!ho_ten || !cccd) {
+      return res.status(400).json({ error: 'Thiếu dữ liệu: ho_ten, cccd' });
+    }
+
+    // Kiểm tra CCCD đã tồn tại chưa
+    const existingTenant = await NguoiThue.findOne({ where: { cccd } });
+    if (existingTenant) {
+      return res.status(400).json({ error: 'CCCD đã tồn tại trong hệ thống' });
+    }
+
+    // Validate CCCD format (12 số)
+    if (!/^\d{12}$/.test(cccd)) {
+      return res.status(400).json({ error: 'CCCD phải là 12 chữ số' });
+    }
+
+    const tenant = await NguoiThue.create({
+      ho_ten,
+      cccd,
+      so_dien_thoai,
+      email,
+      ngay_vao,
+      ngay_ra,
+      id_tai_khoan
+    });
+
+    res.status(201).json({
+      message: 'Tạo người thuê thành công',
+      data: tenant
+    });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ error: error.message });
   }
 });
 
-// Cập nhật người thuê (Admin only)
-router.put('/:id_nguoi_thue', checkUser, checkAdminRole, async (req, res) => {
+// PUT /api/nguoiThue/:id_nguoi_thue - Cập nhật người thuê (Chủ trọ/Admin)
+router.put('/:id_nguoi_thue', verifyToken, requireChuTroOrAdmin, async (req, res) => {
   try {
-    const [updated] = await NguoiThue.update(req.body, { where: { id_nguoi_thue: req.params.id_nguoi_thue } });
-    if (updated) {
-      const updatedTenant = await NguoiThue.findByPk(req.params.id_nguoi_thue);
-      res.json({ success: true, data: updatedTenant });
-    } else {
-      res.status(404).json({ success: false, message: 'Người thuê không tồn tại' });
+    const tenant = await NguoiThue.findByPk(req.params.id_nguoi_thue);
+    
+    if (!tenant) {
+      return res.status(404).json({ error: 'Người thuê không tồn tại' });
     }
+
+    const { ho_ten, cccd, so_dien_thoai, email, ngay_vao, ngay_ra } = req.body;
+
+    // Nếu cập nhật CCCD, kiểm tra trùng lặp
+    if (cccd && cccd !== tenant.cccd) {
+      // Validate format
+      if (!/^\d{12}$/.test(cccd)) {
+        return res.status(400).json({ error: 'CCCD phải là 12 chữ số' });
+      }
+      
+      const existingTenant = await NguoiThue.findOne({ where: { cccd } });
+      if (existingTenant) {
+        return res.status(400).json({ error: 'CCCD đã tồn tại trong hệ thống' });
+      }
+      tenant.cccd = cccd;
+    }
+
+    // Update fields
+    if (ho_ten) tenant.ho_ten = ho_ten;
+    if (so_dien_thoai) tenant.so_dien_thoai = so_dien_thoai;
+    if (email) tenant.email = email;
+    if (ngay_vao) tenant.ngay_vao = ngay_vao;
+    if (ngay_ra) tenant.ngay_ra = ngay_ra;
+
+    await tenant.save();
+    res.json({
+      message: 'Cập nhật người thuê thành công',
+      data: tenant
+    });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ error: error.message });
   }
 });
 
-// Xóa người thuê (Admin only)
-router.delete('/:id_nguoi_thue', checkUser, checkAdminRole, async (req, res) => {
+// DELETE /api/nguoiThue/:id_nguoi_thue - Xóa người thuê (Chủ trọ/Admin)
+router.delete('/:id_nguoi_thue', verifyToken, requireChuTroOrAdmin, async (req, res) => {
   try {
-    const deleted = await NguoiThue.destroy({ where: { id_nguoi_thue: req.params.id_nguoi_thue } });
-    if (deleted) {
-      res.json({ success: true, message: 'Người thuê đã được xóa' });
-    } else {
-      res.status(404).json({ success: false, message: 'Người thuê không tồn tại' });
+    const tenant = await NguoiThue.findByPk(req.params.id_nguoi_thue);
+    
+    if (!tenant) {
+      return res.status(404).json({ error: 'Người thuê không tồn tại' });
     }
+
+    // Kiểm tra xem người thuê có hợp đồng đang hoạt động không
+    const HopDong = (await import('../models/HopDong.js')).default;
+    const activeContract = await HopDong.findOne({
+      where: {
+        id_nguoi_thue: tenant.id_nguoi_thue,
+        trang_thai: 1
+      }
+    });
+
+    if (activeContract) {
+      return res.status(400).json({ 
+        error: 'Không thể xóa người thuê đang có hợp đồng hoạt động' 
+      });
+    }
+
+    await tenant.destroy();
+    res.json({ 
+      message: 'Xóa người thuê thành công',
+      id_nguoi_thue: parseInt(req.params.id_nguoi_thue) 
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 

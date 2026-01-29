@@ -9,6 +9,7 @@
     "sync": "node sync.js"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "body-parser": "^2.2.2",
     "cookie-parser": "~1.4.4",
     "cors": "^2.8.5",
@@ -16,6 +17,7 @@
     "dotenv": "^17.2.3",
     "express": "~4.16.1",
     "http-errors": "~1.6.3",
+    "jsonwebtoken": "^9.0.3",
     "morgan": "~1.9.1",
     "mysql2": "^3.16.1",
     "node-cron": "^4.2.1",

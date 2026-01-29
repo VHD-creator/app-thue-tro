@@ -1,54 +1,40 @@
 import express from 'express';
 import ThanhToan from '../models/ThanhToan.js';
 import HoaDon from '../models/HoaDon.js';
-import TaiKhoan from '../models/TaiKhoan.js';
+import Phong from '../models/Phong.js';
+import { 
+  verifyToken,
+  requireChuTroOrAdmin,
+  requireAuthenticated 
+} from '../middlewares/auth.js';
 import { validateAmount, validatePaymentMethod, validateDate } from '../utils/validators.js';
-import { guiNhacNhoThanhToan } from '../services/emailService.js';
 
 const router = express.Router();
 
-
-// Middleware: Check authentication
-const checkUser = (req, res, next) => {
-  if (!req.session || !req.session.userId) {
-    return res.status(401).json({ error: 'Vui lòng đăng nhập' });
-  }
-  next();
-};
-
-// Middleware: Check admin role
-const checkAdminRole = async (req, res, next) => {
-  try {
-    const taiKhoan = await TaiKhoan.findByPk(req.session.userId);
-    if (!taiKhoan || taiKhoan.vai_tro !== 'ADMIN') {
-      return res.status(403).json({ error: 'Chỉ admin mới có quyền' });
-    }
-    next();
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// GET /api/thanhToan - Danh sách thanh toán (admin only)
-router.get('/', checkAdminRole, async (req, res) => {
+// GET /api/thanhToan - Danh sách thanh toán
+router.get('/', async (req, res) => {
   try {
     const thanhToans = await ThanhToan.findAll({
       include: [
         { 
           model: HoaDon, 
           as: 'HoaDon',
-          attributes: ['id_hoa_don', 'id_phong', 'thang_nam', 'tong_tien']
+          attributes: ['id_hoa_don', 'id_phong', 'thang_nam', 'tong_tien'],
+          include: [
+            { model: Phong, as: 'Phong', attributes: ['ten_phong'] }
+          ]
         }
-      ]
+      ],
+      order: [['ngay_thanh_toan', 'DESC']]
     });
-    res.json({ count: thanhToans.length, data: thanhToans });
+    res.json(thanhToans);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// GET /api/thanhToan/hoa_don/:id_hoa_don - Danh sách thanh toán theo hóa đơn (auth)
-router.get('/hoa_don/:id_hoa_don', checkUser, async (req, res) => {
+// GET /api/thanhToan/hoa_don/:id_hoa_don - Danh sách thanh toán theo hóa đơn
+router.get('/hoa_don/:id_hoa_don', async (req, res) => {
   try {
     const thanhToans = await ThanhToan.findAll({
       where: { id_hoa_don: req.params.id_hoa_don },
@@ -58,23 +44,27 @@ router.get('/hoa_don/:id_hoa_don', checkUser, async (req, res) => {
           as: 'HoaDon',
           attributes: ['id_hoa_don', 'thang_nam', 'tong_tien']
         }
-      ]
+      ],
+      order: [['ngay_thanh_toan', 'DESC']]
     });
-    res.json({ count: thanhToans.length, data: thanhToans });
+    res.json(thanhToans);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// GET /api/thanhToan/:id_thanh_toan - Chi tiết thanh toán (auth)
-router.get('/:id_thanh_toan', checkUser, async (req, res) => {
+// GET /api/thanhToan/:id_thanh_toan - Chi tiết thanh toán
+router.get('/:id_thanh_toan', async (req, res) => {
   try {
     const thanhToan = await ThanhToan.findByPk(req.params.id_thanh_toan, {
       include: [
         { 
           model: HoaDon, 
           as: 'HoaDon',
-          attributes: ['id_hoa_don', 'id_phong', 'thang_nam', 'tong_tien']
+          attributes: ['id_hoa_don', 'id_phong', 'thang_nam', 'tong_tien'],
+          include: [
+            { model: Phong, as: 'Phong', attributes: ['ten_phong'] }
+          ]
         }
       ]
     });
@@ -89,8 +79,8 @@ router.get('/:id_thanh_toan', checkUser, async (req, res) => {
   }
 });
 
-// POST /api/thanhToan - Tạo thanh toán mới (auth required)
-router.post('/', checkUser, async (req, res) => {
+// POST /api/thanhToan - Tạo thanh toán mới (Auth required)
+router.post('/', verifyToken, requireAuthenticated, async (req, res) => {
   try {
     const { id_hoa_don, so_tien, hinh_thuc } = req.body;
 
@@ -117,6 +107,13 @@ router.post('/', checkUser, async (req, res) => {
       return res.status(404).json({ error: 'Hóa đơn không tồn tại' });
     }
 
+    // Kiểm tra số tiền thanh toán
+    if (parseFloat(so_tien) > parseFloat(hoaDon.tong_tien)) {
+      return res.status(400).json({ 
+        error: `Số tiền thanh toán (${so_tien}) vượt quá tổng tiền hóa đơn (${hoaDon.tong_tien})` 
+      });
+    }
+
     // Create payment
     const thanhToan = await ThanhToan.create({
       id_hoa_don,
@@ -129,19 +126,16 @@ router.post('/', checkUser, async (req, res) => {
     await hoaDon.update({ trang_thai: 1 });
 
     res.status(201).json({
-      message: 'Tạo thanh toán thành công, hóa đơn đã được đánh dấu là đã thanh toán',
+      message: 'Ghi nhận thanh toán thành công',
       data: thanhToan
     });
-
-    // Send confirmation email (optional)
-    // await guiNhacNhoThanhToan(nguoiThue.email, nguoiThue.ho_ten, so_tien, new Date());
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// PUT /api/thanhToan/:id_thanh_toan - Cập nhật thanh toán (admin only)
-router.put('/:id_thanh_toan', checkAdminRole, async (req, res) => {
+// PUT /api/thanhToan/:id_thanh_toan - Cập nhật thanh toán (Chủ trọ/Admin)
+router.put('/:id_thanh_toan', verifyToken, requireChuTroOrAdmin, async (req, res) => {
   try {
     const thanhToan = await ThanhToan.findByPk(req.params.id_thanh_toan);
     if (!thanhToan) {
@@ -181,8 +175,8 @@ router.put('/:id_thanh_toan', checkAdminRole, async (req, res) => {
   }
 });
 
-// DELETE /api/thanhToan/:id_thanh_toan - Xóa thanh toán (admin only)
-router.delete('/:id_thanh_toan', checkAdminRole, async (req, res) => {
+// DELETE /api/thanhToan/:id_thanh_toan - Xóa thanh toán (Chủ trọ/Admin)
+router.delete('/:id_thanh_toan', verifyToken, requireChuTroOrAdmin, async (req, res) => {
   try {
     const thanhToan = await ThanhToan.findByPk(req.params.id_thanh_toan);
     if (!thanhToan) {
@@ -205,7 +199,10 @@ router.delete('/:id_thanh_toan', checkAdminRole, async (req, res) => {
       }
     }
 
-    res.json({ message: 'Xóa thanh toán thành công' });
+    res.json({ 
+      message: 'Xóa thanh toán thành công',
+      id_thanh_toan: parseInt(req.params.id_thanh_toan) 
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

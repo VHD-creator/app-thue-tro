@@ -7,15 +7,14 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
+import session from 'express-session';
 
 dotenv.config({ path: './server/.env' });
 
 console.log('DB_USER:', process.env.DB_USER);
 
 import sequelize from './config/database.js';
-import indexRouter from './routes/index.js';
 import usersRouter from './routes/users.js';
-import adminRouter from './routes/admin.js';
 import phongRouter from './routes/phong.js';
 import nguoiThueRouter from './routes/nguoiThue.js';
 import hopDongRouter from './routes/hopDong.js';
@@ -23,15 +22,8 @@ import taiKhoanRouter from './routes/taiKhoan.js';
 import hoaDonRouter from './routes/hoaDon.js';
 import thanhToanRouter from './routes/thanhToan.js';
 import baoCaoRouter from './routes/baoCao.js';
+import authrouter from './routes/auth.js';
 
-// Import models để tạo associations
-import Phong from './models/Phong.js';
-import HoaDon from './models/HoaDon.js';
-import ThanhToan from './models/ThanhToan.js';
-import NguoiThue from './models/NguoiThue.js';
-import ChuTro from './models/ChuTro.js';
-import HopDong from './models/HopDong.js';
-import TaiKhoan from './models/TaiKhoan.js';
 
 import './models/quanHe.js';
 import './services/scheduler.js';
@@ -59,10 +51,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+
+
 // Routes
-app.use('/', indexRouter);
 app.use('/users', usersRouter);
-app.use('/api/admin', adminRouter);
 app.use('/api/phong', phongRouter);
 app.use('/api/nguoiThue', nguoiThueRouter);
 app.use('/api/hopDong', hopDongRouter);
@@ -70,6 +62,8 @@ app.use('/api/taiKhoan', taiKhoanRouter);
 app.use('/api/hoaDon', hoaDonRouter);
 app.use('/api/thanhToan', thanhToanRouter);
 app.use('/api/baoCao', baoCaoRouter);
+app.use('/api/auth', authrouter);
+
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

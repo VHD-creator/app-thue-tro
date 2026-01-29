@@ -3,30 +3,28 @@ import PDFDocument from 'pdfkit';
 import { Op } from 'sequelize';
 import HoaDon from '../models/HoaDon.js';
 import ThanhToan from '../models/ThanhToan.js';
-import NguoiThue from '../models/NguoiThue.js';
 import Phong from '../models/Phong.js';
-import TaiKhoan from '../models/TaiKhoan.js';
+import { verifyToken, requireChuTroOrAdmin } from '../middlewares/auth.js';
 
 const router = express.Router();
 
-
-// Middleware: Check admin role
-const checkAdminRole = async (req, res, next) => {
+// GET /api/baoCao/hoaDon - Xuất báo cáo hóa đơn PDF (Chủ trọ/Admin)
+router.get('/hoaDon', verifyToken, requireChuTroOrAdmin, async (req, res) => {
   try {
-    const taiKhoan = await TaiKhoan.findByPk(req.session.userId);
-    if (!taiKhoan || taiKhoan.vai_tro !== 'ADMIN') {
-      return res.status(403).json({ error: 'Chỉ admin mới có quyền' });
+    let whereCondition = {};
+    
+    // Chủ trọ chỉ xem hóa đơn của phòng mình
+    if (req.userRole === 'CHU_TRO' && req.idChuTro) {
+      const danhSachPhong = await Phong.findAll({
+        where: { id_chu_tro: req.idChuTro },
+        attributes: ['id_phong']
+      });
+      const idPhongs = danhSachPhong.map(p => p.id_phong);
+      whereCondition.id_phong = idPhongs;
     }
-    next();
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// GET /api/baoCao/hoaDon - Xuất báo cáo hóa đơn PDF (admin)
-router.get('/hoaDon', checkAdminRole, async (req, res) => {
-  try {
+    
     const hoaDons = await HoaDon.findAll({
+      where: whereCondition,
       include: [
         { 
           model: Phong, 
@@ -43,27 +41,27 @@ router.get('/hoaDon', checkAdminRole, async (req, res) => {
     doc.pipe(res);
 
     // Title
-    doc.fontSize(20).font('Helvetica-Bold').text('BÁNG CÁO HÓA ĐƠN', { align: 'center' });
+    doc.fontSize(20).font('Helvetica-Bold').text('BAO CAO HOA DON', { align: 'center' });
     doc.moveDown();
-    doc.fontSize(10).text(`Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`, { align: 'right' });
+    doc.fontSize(10).text(`Ngay xuat: ${new Date().toLocaleDateString('vi-VN')}`, { align: 'right' });
     doc.moveDown();
 
     // Table header
     doc.fontSize(10).font('Helvetica-Bold');
     doc.text('ID', 20, doc.y);
-    doc.text('Phòng', 60, doc.y);
-    doc.text('Tháng/Năm', 120, doc.y);
-    doc.text('Tổng Tiền', 190, doc.y);
-    doc.text('Trạng Thái', 280, doc.y);
+    doc.text('Phong', 60, doc.y);
+    doc.text('Thang/Nam', 120, doc.y);
+    doc.text('Tong Tien', 190, doc.y);
+    doc.text('Trang Thai', 280, doc.y);
     doc.moveDown();
     doc.moveTo(20, doc.y).lineTo(550, doc.y).stroke();
-    doc.moveDown(5);
+    doc.moveDown(0.5);
 
     // Table rows
     doc.font('Helvetica').fontSize(9);
     hoaDons.forEach(hoaDon => {
-      const trangThai = hoaDon.trang_thai === 0 ? 'Chưa thanh toán' : 
-                       hoaDon.trang_thai === 1 ? 'Đã thanh toán' : 'Nợ';
+      const trangThai = hoaDon.trang_thai === 0 ? 'Chua thanh toan' : 
+                       hoaDon.trang_thai === 1 ? 'Da thanh toan' : 'No';
       
       doc.text(hoaDon.id_hoa_don, 20, doc.y);
       doc.text(hoaDon.Phong.ten_phong, 60, doc.y);
@@ -79,10 +77,29 @@ router.get('/hoaDon', checkAdminRole, async (req, res) => {
   }
 });
 
-// GET /api/baoCao/thanhToan - Xuất báo cáo thanh toán PDF (admin)
-router.get('/thanhToan', checkAdminRole, async (req, res) => {
+// GET /api/baoCao/thanhToan - Xuất báo cáo thanh toán PDF (Chủ trọ/Admin)
+router.get('/thanhToan', verifyToken, requireChuTroOrAdmin, async (req, res) => {
   try {
+    let whereCondition = {};
+    
+    // Chủ trọ chỉ xem thanh toán của phòng mình
+    if (req.userRole === 'CHU_TRO' && req.idChuTro) {
+      const danhSachPhong = await Phong.findAll({
+        where: { id_chu_tro: req.idChuTro },
+        attributes: ['id_phong']
+      });
+      const idPhongs = danhSachPhong.map(p => p.id_phong);
+      
+      // Filter hóa đơn theo phòng
+      const hoaDonIds = await HoaDon.findAll({
+        where: { id_phong: idPhongs },
+        attributes: ['id_hoa_don']
+      });
+      whereCondition.id_hoa_don = hoaDonIds.map(h => h.id_hoa_don);
+    }
+    
     const thanhToans = await ThanhToan.findAll({
+      where: whereCondition,
       include: [
         { 
           model: HoaDon, 
@@ -102,22 +119,22 @@ router.get('/thanhToan', checkAdminRole, async (req, res) => {
     doc.pipe(res);
 
     // Title
-    doc.fontSize(20).font('Helvetica-Bold').text('BÁO CÁO THANH TOÁN', { align: 'center' });
+    doc.fontSize(20).font('Helvetica-Bold').text('BAO CAO THANH TOAN', { align: 'center' });
     doc.moveDown();
-    doc.fontSize(10).text(`Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`, { align: 'right' });
+    doc.fontSize(10).text(`Ngay xuat: ${new Date().toLocaleDateString('vi-VN')}`, { align: 'right' });
     doc.moveDown();
 
     // Table header
     doc.fontSize(10).font('Helvetica-Bold');
     doc.text('ID', 20, doc.y);
-    doc.text('Phòng', 70, doc.y);
-    doc.text('Hóa Đơn', 130, doc.y);
-    doc.text('Số Tiền', 190, doc.y);
-    doc.text('Ngày Thanh Toán', 280, doc.y);
-    doc.text('Hình Thức', 380, doc.y);
+    doc.text('Phong', 70, doc.y);
+    doc.text('Hoa Don', 130, doc.y);
+    doc.text('So Tien', 190, doc.y);
+    doc.text('Ngay Thanh Toan', 280, doc.y);
+    doc.text('Hinh Thuc', 380, doc.y);
     doc.moveDown();
     doc.moveTo(20, doc.y).lineTo(550, doc.y).stroke();
-    doc.moveDown(5);
+    doc.moveDown(0.5);
 
     // Table rows
     doc.font('Helvetica').fontSize(9);
@@ -137,23 +154,40 @@ router.get('/thanhToan', checkAdminRole, async (req, res) => {
   }
 });
 
-// GET /api/baoCao/doanhThu - Báo cáo doanh thu (admin)
-router.get('/doanhThu', checkAdminRole, async (req, res) => {
+// GET /api/baoCao/doanhThu - Báo cáo doanh thu (Chủ trọ/Admin)
+router.get('/doanhThu', verifyToken, requireChuTroOrAdmin, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
     if (!startDate || !endDate) {
       return res.status(400).json({ 
-        error: 'Vui lòng cung cấp startDate và endDate (DD-MM-YYYY)' 
+        error: 'Vui long cung cap startDate va endDate (YYYY-MM-DD)' 
       });
     }
 
+    let whereCondition = {
+      ngay_thanh_toan: {
+        [Op.between]: [new Date(startDate), new Date(endDate)]
+      }
+    };
+    
+    // Chủ trọ chỉ xem doanh thu của phòng mình
+    if (req.userRole === 'CHU_TRO' && req.idChuTro) {
+      const danhSachPhong = await Phong.findAll({
+        where: { id_chu_tro: req.idChuTro },
+        attributes: ['id_phong']
+      });
+      const idPhongs = danhSachPhong.map(p => p.id_phong);
+      
+      const hoaDonIds = await HoaDon.findAll({
+        where: { id_phong: idPhongs },
+        attributes: ['id_hoa_don']
+      });
+      whereCondition.id_hoa_don = hoaDonIds.map(h => h.id_hoa_don);
+    }
+    
     const thanhToans = await ThanhToan.findAll({
-      where: {
-        ngay_thanh_toan: {
-          [Op.between]: [new Date(startDate), new Date(endDate)]
-        }
-      },
+      where: whereCondition,
       include: [
         { 
           model: HoaDon, 
@@ -167,58 +201,76 @@ router.get('/doanhThu', checkAdminRole, async (req, res) => {
     const tongDoanhThu = thanhToans.reduce((sum, tt) => sum + parseFloat(tt.so_tien), 0);
 
     res.json({ 
-      success: true, 
-      data: { 
-        tongDoanhThu: tongDoanhThu.toLocaleString('vi-VN'),
-        soLuongThanhToan: thanhToans.length,
-        khoangThoiGian: `${startDate} đến ${endDate}`,
-        chiTiet: thanhToans.map(tt => ({
-          id: tt.id_thanh_toan,
-          phong: tt.HoaDon.Phong.ten_phong,
-          soTien: tt.so_tien,
-          ngayThanhToan: tt.ngay_thanh_toan,
-          hinhThuc: tt.hinh_thuc
-        }))
-      } 
+      tongDoanhThu: tongDoanhThu,
+      soLuongThanhToan: thanhToans.length,
+      khoangThoiGian: `${startDate} den ${endDate}`,
+      chiTiet: thanhToans.map(tt => ({
+        id: tt.id_thanh_toan,
+        phong: tt.HoaDon.Phong.ten_phong,
+        soTien: tt.so_tien,
+        ngayThanhToan: tt.ngay_thanh_toan,
+        hinhThuc: tt.hinh_thuc
+      }))
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// GET /api/baoCao/tongHop - Báo cáo tổng hợp (admin)
-router.get('/tongHop', checkAdminRole, async (req, res) => {
+// GET /api/baoCao/tongHop - Báo cáo tổng hợp (Chủ trọ/Admin)
+router.get('/tongHop', verifyToken, requireChuTroOrAdmin, async (req, res) => {
   try {
+    let phongFilter = {};
+    let hoaDonFilter = {};
+    
+    // Chủ trọ chỉ xem thống kê của mình
+    if (req.userRole === 'CHU_TRO' && req.idChuTro) {
+      phongFilter.id_chu_tro = req.idChuTro;
+      
+      const danhSachPhong = await Phong.findAll({
+        where: phongFilter,
+        attributes: ['id_phong']
+      });
+      const idPhongs = danhSachPhong.map(p => p.id_phong);
+      hoaDonFilter.id_phong = idPhongs;
+    }
+    
     // Tổng phòng
-    const tongPhong = await Phong.count();
-    const phongTrong = await Phong.count({ where: { trang_thai: 0 } });
-    const phongChoThue = await Phong.count({ where: { trang_thai: 1 } });
+    const tongPhong = await Phong.count({ where: phongFilter });
+    const phongTrong = await Phong.count({ where: { ...phongFilter, trang_thai: 0 } });
+    const phongChoThue = await Phong.count({ where: { ...phongFilter, trang_thai: 1 } });
 
     // Tổng hóa đơn
-    const tongHoaDon = await HoaDon.count();
-    const hoaDonChaThanhtoan = await HoaDon.count({ where: { trang_thai: 0 } });
-    const hoaDonDaThanhtoan = await HoaDon.count({ where: { trang_thai: 1 } });
+    const tongHoaDon = await HoaDon.count({ where: hoaDonFilter });
+    const hoaDonChuaThanhtoan = await HoaDon.count({ where: { ...hoaDonFilter, trang_thai: 0 } });
+    const hoaDonDaThanhtoan = await HoaDon.count({ where: { ...hoaDonFilter, trang_thai: 1 } });
 
     // Tổng doanh thu
-    const thanhToans = await ThanhToan.findAll();
+    let thanhToanFilter = {};
+    if (req.userRole === 'CHU_TRO' && req.idChuTro) {
+      const hoaDonIds = await HoaDon.findAll({
+        where: hoaDonFilter,
+        attributes: ['id_hoa_don']
+      });
+      thanhToanFilter.id_hoa_don = hoaDonIds.map(h => h.id_hoa_don);
+    }
+    
+    const thanhToans = await ThanhToan.findAll({ where: thanhToanFilter });
     const tongDoanhThu = thanhToans.reduce((sum, tt) => sum + parseFloat(tt.so_tien), 0);
 
     res.json({
-      success: true,
-      data: {
-        phong: {
-          tong: tongPhong,
-          trong: phongTrong,
-          choThue: phongChoThue
-        },
-        hoaDon: {
-          tong: tongHoaDon,
-          chaThanhtoan: hoaDonChaThanhtoan,
-          daThanhtoan: hoaDonDaThanhtoan
-        },
-        doanhThu: tongDoanhThu.toLocaleString('vi-VN'),
-        tongThanhToan: thanhToans.length
-      }
+      phong: {
+        tong: tongPhong,
+        trong: phongTrong,
+        choThue: phongChoThue
+      },
+      hoaDon: {
+        tong: tongHoaDon,
+        chuaThanhtoan: hoaDonChuaThanhtoan,
+        daThanhtoan: hoaDonDaThanhtoan
+      },
+      doanhThu: tongDoanhThu,
+      tongThanhToan: thanhToans.length
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
