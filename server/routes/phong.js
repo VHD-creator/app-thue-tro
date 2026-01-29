@@ -1,43 +1,36 @@
 import express from 'express';
 import Phong from '../models/Phong.js';
 import NguoiThue from '../models/NguoiThue.js';
+import { validatePrice, validateStringLength, validateStatus } from '../utils/validators.js';
 
 const router = express.Router();
 
 // Middleware check user
-const checkUser = async (req, res, next) => {
-  try {
-    if (!req.user && !req.session?.userId) {
-      return res.status(401).json({ success: false, message: 'Vui lòng đăng nhập' });
-    }
-    next();
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+const checkUser = (req, res, next) => {
+  if (!req.session || !req.session.userId) {
+    return res.status(401).json({ error: 'Vui lòng đăng nhập' });
   }
+  next();
 };
 
 // Middleware check admin role
 const checkAdminRole = async (req, res, next) => {
   try {
-    const userId = req.user?.id_tai_khoan || req.session?.userId;
-    const user = await NguoiThue.findByPk(userId, { raw: true });
-    
-    if (!user) {
-      return res.status(403).json({ success: false, message: 'Bạn không có quyền truy cập' });
+    const taiKhoan = await TaiKhoan.findByPk(req.session.userId);
+    if (!taiKhoan || taiKhoan.vai_tro !== 'ADMIN') {
+      return res.status(403).json({ error: 'Chỉ admin mới có quyền' });
     }
     next();
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ Danh sách phòng trống (trang_thai = 0) - Không cần đăng nhập
+// GET /api/phong/trong - Danh sách phòng trống (public)
 router.get('/trong', async (req, res) => {
   try {
     const dsPhongTrong = await Phong.findAll({
-      where: {
-        trang_thai: 0
-      }
+      where: { trang_thai: 0 }
     });
 
     res.json({
@@ -46,72 +39,120 @@ router.get('/trong', async (req, res) => {
       data: dsPhongTrong
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// ✅ Tất cả phòng - Không cần đăng nhập
+// GET /api/phong - Danh sách tất cả phòng (public)
 router.get('/', async (req, res) => {
   try {
     const data = await Phong.findAll();
-    res.json({ success: true, data });
+    res.json({ count: data.length, data });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Lấy phòng theo ID
+// GET /api/phong/:id_phong - Chi tiết phòng (auth)
 router.get('/:id_phong', checkUser, async (req, res) => {
   try {
     const room = await Phong.findByPk(req.params.id_phong);
     if (!room) {
-      return res.status(404).json({ success: false, message: 'Phòng không tồn tại' });
+      return res.status(404).json({ error: 'Phòng không tồn tại' });
     }
-    res.json({ success: true, data: room });
+    res.json(room);
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Tạo phòng mới (Admin only)
-router.post('/', checkUser, checkAdminRole, async (req, res) => {
+// POST /api/phong - Tạo phòng mới (admin)
+router.post('/', checkAdminRole, async (req, res) => {
   try {
-    const room = await Phong.create(req.body);
-    res.status(201).json({ success: true, data: room });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
+    const { id_chu_tro, ten_phong, gia_phong, mo_ta } = req.body;
 
-// Cập nhật phòng (Admin only)
-router.put('/:id_phong', checkUser, checkAdminRole, async (req, res) => {
-  try {
-    const [updated] = await Phong.update(req.body, { where: { id_phong: req.params.id_phong } });
-    if (updated) {
-      const updatedRoom = await Phong.findByPk(req.params.id_phong);
-      res.json({ success: true, data: updatedRoom });
-    } else {
-      res.status(404).json({ success: false, message: 'Phòng không tồn tại' });
+    // Validation
+    if (!id_chu_tro || !ten_phong || !gia_phong) {
+      return res.status(400).json({ 
+        error: 'Thiếu dữ liệu: id_chu_tro, ten_phong, gia_phong' 
+      });
     }
+
+    if (!validateStringLength(ten_phong, 1, 100)) {
+      return res.status(400).json({ error: 'ten_phong phải từ 1-100 ký tự' });
+    }
+
+    if (!validatePrice(gia_phong)) {
+      return res.status(400).json({ error: 'gia_phong phải là số dương' });
+    }
+
+    const room = await Phong.create({
+      id_chu_tro,
+      ten_phong,
+      gia_phong,
+      mo_ta: mo_ta || '',
+      trang_thai: 0
+    });
+
+    res.status(201).json({
+      message: 'Tạo phòng thành công',
+      data: room
+    });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Xóa phòng (Admin only)
-router.delete('/:id_phong', checkUser, checkAdminRole, async (req, res) => {
+// PUT /api/phong/:id_phong - Cập nhật phòng (admin)
+router.put('/:id_phong', checkAdminRole, async (req, res) => {
+  try {
+    const room = await Phong.findByPk(req.params.id_phong);
+    if (!room) {
+      return res.status(404).json({ error: 'Phòng không tồn tại' });
+    }
+
+    const { ten_phong, gia_phong, mo_ta, trang_thai } = req.body;
+
+    // Validation
+    if (ten_phong && !validateStringLength(ten_phong, 1, 100)) {
+      return res.status(400).json({ error: 'ten_phong phải từ 1-100 ký tự' });
+    }
+
+    if (gia_phong && !validatePrice(gia_phong)) {
+      return res.status(400).json({ error: 'gia_phong phải là số dương' });
+    }
+
+    if (trang_thai !== undefined && !validateStatus(trang_thai)) {
+      return res.status(400).json({ error: 'trang_thai phải là 0 hoặc 1' });
+    }
+
+    if (ten_phong) room.ten_phong = ten_phong;
+    if (gia_phong) room.gia_phong = gia_phong;
+    if (mo_ta) room.mo_ta = mo_ta;
+    if (trang_thai !== undefined) room.trang_thai = trang_thai;
+
+    await room.save();
+
+    res.json({
+      message: 'Cập nhật phòng thành công',
+      data: room
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/phong/:id_phong - Xóa phòng (admin)
+router.delete('/:id_phong', checkAdminRole, async (req, res) => {
   try {
     const deleted = await Phong.destroy({ where: { id_phong: req.params.id_phong } });
     if (deleted) {
-      res.json({ success: true, message: 'Phòng đã được xóa' });
+      res.json({ message: 'Xóa phòng thành công' });
     } else {
-      res.status(404).json({ success: false, message: 'Phòng không tồn tại' });
+      res.status(404).json({ error: 'Phòng không tồn tại' });
     }
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
