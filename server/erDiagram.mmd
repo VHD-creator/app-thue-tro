@@ -1,0 +1,85 @@
+erDiagram
+
+    TAI_KHOAN {
+        int id_tai_khoan PK
+        string ten_dang_nhap
+        string mat_khau
+        string vai_tro
+        int trang_thai
+        datetime ngay_tao
+    }
+
+    CHU_TRO {
+        int id_chu_tro PK
+        int id_tai_khoan FK
+        string ho_ten
+        string so_dien_thoai
+        string email
+        string dia_chi
+        datetime ngay_tao
+    }
+
+    NGUOI_THUE {
+        int id_nguoi_thue PK
+        int id_tai_khoan FK
+        string ho_ten
+        string cccd
+        string so_dien_thoai
+        string email
+        date ngay_vao
+        date ngay_ra
+    }
+
+    PHONG {
+        int id_phong PK
+        int id_chu_tro FK
+        string ten_phong
+        decimal gia_phong
+        int trang_thai
+        string mo_ta
+    }
+
+    HOP_DONG {
+        int id_hop_dong PK
+        int id_phong FK
+        int id_nguoi_thue FK
+        date ngay_bat_dau
+        date ngay_ket_thuc
+        decimal tien_coc
+        int trang_thai
+    }
+
+    HOA_DON {
+        int id_hoa_don PK
+        int id_phong FK
+        string thang_nam
+        int so_dien_cu
+        int so_dien_moi
+        int so_nuoc_cu
+        int so_nuoc_moi
+        decimal tien_dien
+        decimal tien_nuoc
+        decimal tien_phong
+        decimal tong_tien
+        int trang_thai
+        datetime ngay_tao
+    }
+
+    THANH_TOAN {
+        int id_thanh_toan PK
+        int id_hoa_don FK
+        decimal so_tien
+        datetime ngay_thanh_toan
+        string hinh_thuc
+    }
+
+    %% QUAN HỆ
+    TAI_KHOAN ||--|| CHU_TRO : "sở hữu"
+    TAI_KHOAN ||--|| NGUOI_THUE : "sở hữu"
+
+    CHU_TRO ||--o{ PHONG : "quản lý"
+    PHONG ||--o{ HOP_DONG : "có"
+    NGUOI_THUE ||--o{ HOP_DONG : "ký"
+
+    PHONG ||--o{ HOA_DON : "phát sinh"
+    HOA_DON ||--o{ THANH_TOAN : "được thanh toán"
