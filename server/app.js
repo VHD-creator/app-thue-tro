@@ -7,14 +7,14 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
-import session from 'express-session';
+
 
 dotenv.config({ path: './server/.env' });
 
 console.log('DB_USER:', process.env.DB_USER);
 
 import sequelize from './config/database.js';
-import usersRouter from './routes/users.js';
+
 import phongRouter from './routes/phong.js';
 import nguoiThueRouter from './routes/nguoiThue.js';
 import hopDongRouter from './routes/hopDong.js';
@@ -54,7 +54,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 
 // Routes
-app.use('/users', usersRouter);
+
 app.use('/api/phong', phongRouter);
 app.use('/api/nguoiThue', nguoiThueRouter);
 app.use('/api/hopDong', hopDongRouter);

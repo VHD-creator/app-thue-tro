@@ -28,7 +28,7 @@ router.get('/', async (req, res) => {
         const jwt = await import('jsonwebtoken');
         const decoded = jwt.default.verify(token, process.env.JWT_SECRET);
         
-        const taiKhoan = await TaiKhoan.findByPk(decoded.id);
+        const taiKhoan = await TaiKhoan.findByPk(decoded.id_tai_khoan);
         
         if (taiKhoan?.vai_tro === 'CHU_TRO') {
           const chuTro = await ChuTro.findOne({ 
