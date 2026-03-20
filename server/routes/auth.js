@@ -89,7 +89,7 @@ router.post('/login', async (req, res) => {
     }
 
     // 2. Tìm user và include profile
-    const user = await TaiKhoan.findOne({
+    let user = await TaiKhoan.findOne({
       where: { ten_dang_nhap },
       include: [
         { model: ChuTro, as: 'ChuTro', attributes: ['id_chu_tro', 'ho_ten', 'email'] },
@@ -98,8 +98,32 @@ router.post('/login', async (req, res) => {
     });
 
     if (!user) {
+      // Tìm bằng email trong bảng ChuTro
+      const chuTro = await ChuTro.findOne({ where: { email: ten_dang_nhap } });
+      if (chuTro && chuTro.id_tai_khoan) {
+        user = await TaiKhoan.findByPk(chuTro.id_tai_khoan, {
+          include: [
+            { model: ChuTro, as: 'ChuTro', attributes: ['id_chu_tro', 'ho_ten', 'email'] },
+            { model: NguoiThue, as: 'NguoiThue', attributes: ['id_nguoi_thue', 'ho_ten', 'email'] }
+          ]
+        });
+      } else {
+        // Tìm bằng email trong bảng NguoiThue
+        const nguoiThue = await NguoiThue.findOne({ where: { email: ten_dang_nhap } });
+        if (nguoiThue && nguoiThue.id_tai_khoan) {
+          user = await TaiKhoan.findByPk(nguoiThue.id_tai_khoan, {
+            include: [
+              { model: ChuTro, as: 'ChuTro', attributes: ['id_chu_tro', 'ho_ten', 'email'] },
+              { model: NguoiThue, as: 'NguoiThue', attributes: ['id_nguoi_thue', 'ho_ten', 'email'] }
+            ]
+          });
+        }
+      }
+    }
+
+    if (!user) {
       return res.status(401).json({
-        message: 'Sai tên đăng nhập hoặc mật khẩu',
+        message: 'Sai tên đăng nhập/email hoặc mật khẩu',
       });
     }
 

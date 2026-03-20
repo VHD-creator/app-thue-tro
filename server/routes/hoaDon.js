@@ -44,6 +44,20 @@ router.get('/', async (req, res) => {
             const idPhongs = danhSachPhong.map(p => p.id_phong);
             whereCondition.id_phong = idPhongs;
           }
+        } else if (taiKhoan?.vai_tro === 'NGUOI_THUE') {
+          const nguoiThue = await (await import('../models/NguoiThue.js')).default.findOne({ 
+            where: { id_tai_khoan: taiKhoan.id_tai_khoan } 
+          });
+          if (nguoiThue) {
+            const HopDong = (await import('../models/HopDong.js')).default;
+            const hopDongs = await HopDong.findAll({
+              where: { id_nguoi_thue: nguoiThue.id_nguoi_thue }
+            });
+            const idPhongs = hopDongs.map(hd => hd.id_phong);
+            whereCondition.id_phong = idPhongs;
+          } else {
+            whereCondition.id_phong = null; // force empty result if no tenant profile
+          }
         }
       } catch (err) {
         // Token không hợp lệ, bỏ qua

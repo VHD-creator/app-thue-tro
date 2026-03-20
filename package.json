@@ -1,7 +1,0 @@
-{
-  "dependencies": {
-    "express-session": "^1.19.0",
-    "mysql2": "^3.16.1",
-    "sequelize": "^6.37.7"
-  }
-}

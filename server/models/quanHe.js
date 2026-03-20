@@ -4,10 +4,17 @@ import HoaDon from './HoaDon.js';
 import ThanhToan from './ThanhToan.js';
 import ChuTro from './ChuTro.js';
 import TaiKhoan from './TaiKhoan.js';
+import HopDong from './HopDong.js';
 
 // Associations
-Phong.hasMany(NguoiThue, { foreignKey: 'id_phong', as: 'DanhSachNguoiThue' });
-NguoiThue.belongsTo(Phong, { foreignKey: 'id_phong', as: 'Phong' });
+// Phong.hasMany(NguoiThue, { foreignKey: 'id_phong', as: 'DanhSachNguoiThue' }); // Bỏ vì NguoiThue không có id_phong
+// NguoiThue.belongsTo(Phong, { foreignKey: 'id_phong', as: 'Phong' }); // Bỏ vì NguoiThue không có id_phong
+
+Phong.hasMany(HopDong, { foreignKey: 'id_phong', as: 'DanhSachHopDong' });
+HopDong.belongsTo(Phong, { foreignKey: 'id_phong', as: 'Phong' });
+
+NguoiThue.hasMany(HopDong, { foreignKey: 'id_nguoi_thue', as: 'DanhSachHopDong' });
+HopDong.belongsTo(NguoiThue, { foreignKey: 'id_nguoi_thue', as: 'NguoiThue' });
 
 Phong.hasMany(HoaDon, { foreignKey: 'id_phong', as: 'DanhSachHoaDon' });
 HoaDon.belongsTo(Phong, { foreignKey: 'id_phong', as: 'Phong' });
@@ -24,4 +31,4 @@ Phong.belongsTo(ChuTro, {foreignKey: 'id_chu_tro',as: 'ChuTro'});
 TaiKhoan.hasOne(NguoiThue, {foreignKey: 'id_tai_khoan',as: 'NguoiThue'});
 NguoiThue.belongsTo(TaiKhoan, {foreignKey: 'id_tai_khoan',as: 'TaiKhoan'});
 
-export { Phong, NguoiThue, HoaDon, ThanhToan, ChuTro, TaiKhoan };
+export { Phong, NguoiThue, HoaDon, ThanhToan, ChuTro, TaiKhoan, HopDong };
