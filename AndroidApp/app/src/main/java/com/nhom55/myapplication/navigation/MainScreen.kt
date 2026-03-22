@@ -23,6 +23,7 @@ import com.nhom55.myapplication.feature.invoice.InvoiceListScreen
 import com.nhom55.myapplication.feature.payment.PaymentScreen
 import com.nhom55.myapplication.feature.tenant.TenantDetailScreen
 import com.nhom55.myapplication.feature.tenant.TenantListScreen
+import com.nhom55.myapplication.feature.tenant.TenantDashboardScreen
 import kotlinx.coroutines.launch
 
 // Định nghĩa các route
@@ -51,35 +52,99 @@ fun MainScreen() {
 
     val currentUser by SessionManager.currentUser.collectAsState()
     val isLoggedIn = currentUser != null
+    val isAdminOrChuTro = currentUser?.role == "ADMIN" || currentUser?.role == "CHU_TRO"
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = isAdminOrChuTro,
         drawerContent = {
-            DrawerContent(
-                isLoggedIn = isLoggedIn,
-                currentUser = currentUser,
-                navController = navController,
-                onCloseDrawer = {
-                    scope.launch { drawerState.close() }
-                }
-            )
+            if (isAdminOrChuTro) {
+                DrawerContent(
+                    isLoggedIn = isLoggedIn,
+                    currentUser = currentUser,
+                    navController = navController,
+                    onCloseDrawer = {
+                        scope.launch { drawerState.close() }
+                    }
+                )
+            }
         }
     ) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Quản lý trọ") },
+                    title = {
+                        Text(
+                            when {
+                                isAdminOrChuTro -> "Quản lý trọ"
+                                isLoggedIn -> "Dashboard Của Tôi"
+                                else -> "Phòng Trọ 55"
+                            }
+                        )
+                    },
                     navigationIcon = {
-                        IconButton(onClick = {
-                            scope.launch { drawerState.open() }
-                        }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu")
+                        if (isAdminOrChuTro) {
+                            IconButton(onClick = {
+                                scope.launch { drawerState.open() }
+                            }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                            }
+                        }
+                    },
+                    actions = {
+                        if (!isLoggedIn && currentRoute != Screen.Login.route && currentRoute != Screen.Register.route) {
+                            // Guest on home: show Login button
+                            TextButton(
+                                onClick = {
+                                    navController.navigate(Screen.Login.route) {
+                                        launchSingleTop = true
+                                    }
+                                }
+                            ) {
+                                Text("Đăng nhập", color = MaterialTheme.colorScheme.onPrimary)
+                            }
+                        } else if (!isLoggedIn && (currentRoute == Screen.Login.route || currentRoute == Screen.Register.route)) {
+                            // Guest on Login/Register: show Home button
+                            TextButton(
+                                onClick = {
+                                    navController.navigate(Screen.RoomList.route) {
+                                        popUpTo(Screen.RoomList.route) { inclusive = true }
+                                        launchSingleTop = true
+                                    }
+                                }
+                            ) {
+                                Text("Trang chủ", color = MaterialTheme.colorScheme.onPrimary)
+                            }
+                        } else if (!isAdminOrChuTro) {
+                            // Tenant: show 3-dot menu
+                            var showMenu by remember { mutableStateOf(false) }
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "Tùy chọn")
+                            }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Đăng xuất") },
+                                    onClick = {
+                                        showMenu = false
+                                        SessionManager.logout()
+                                        navController.navigate(Screen.Login.route) {
+                                            popUpTo(0) { inclusive = true }
+                                        }
+                                    }
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 )
             }
@@ -90,6 +155,13 @@ fun MainScreen() {
                 modifier = Modifier.padding(paddingValues)
             ) {
                 composable(Screen.RoomList.route) {
+                    if (!isAdminOrChuTro && isLoggedIn) {
+                        TenantDashboardScreen(navController = navController)
+                    } else {
+                        RoomListScreen(navController = navController)
+                    }
+                }
+                composable("all_rooms") { // Custom route for tenant to view all locations/rooms
                     RoomListScreen(navController = navController)
                 }
                 composable(Screen.Login.route) {
@@ -118,6 +190,21 @@ fun MainScreen() {
                 }
                 composable(Screen.Invoices.route) {
                     InvoiceListScreen(navController = navController)
+                }
+                composable(
+                    route = "invoice_detail/{invoiceId}",
+                    arguments = listOf(navArgument("invoiceId") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val invoiceId = backStackEntry.arguments?.getInt("invoiceId") ?: 0
+                    com.nhom55.myapplication.feature.invoice.InvoiceDetailScreen(
+                        invoiceId = invoiceId,
+                        navController = navController
+                    )
+                }
+                composable("create_invoice") {
+                    com.nhom55.myapplication.feature.invoice.CreateInvoiceScreen(
+                        navController = navController
+                    )
                 }
                 composable(Screen.Payments.route) {
                     PlaceholderScreen("Thanh toán")

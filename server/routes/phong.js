@@ -54,8 +54,27 @@ router.get('/', async (req, res) => {
       }
     }
     
-    const data = await Phong.findAll({ where: whereCondition });
-    res.json(data);
+    const data = await Phong.findAll({ 
+      where: whereCondition,
+      include: [
+        {
+          model: ChuTro,
+          as: 'ChuTro',
+          attributes: ['ho_ten', 'so_dien_thoai', 'dia_chi']
+        }
+      ]
+    });
+
+    const formattedData = data.map(room => {
+      const roomJSON = room.toJSON();
+      if (roomJSON.ChuTro) {
+        roomJSON.chu_tro = roomJSON.ChuTro;
+        delete roomJSON.ChuTro;
+      }
+      return roomJSON;
+    });
+
+    res.json(formattedData);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

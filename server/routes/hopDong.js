@@ -157,6 +157,7 @@ router.post('/', verifyToken, requireAuthenticated, async (req, res) => {
     });
 
     if (existingContract) {
+      console.log("Người thuê đang có phòng");
       return res.status(400).json({ 
         error: 'Người thuê đã có hợp đồng đang hoạt động' 
       });

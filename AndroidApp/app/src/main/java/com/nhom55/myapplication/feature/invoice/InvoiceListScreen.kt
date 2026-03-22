@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.nhom55.myapplication.core.session.SessionManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,22 +24,11 @@ fun InvoiceListScreen(
     viewModel: InvoiceViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val currentUser by SessionManager.currentUser.collectAsState()
+    val isAdminOrChuTro = currentUser?.role == "ADMIN" || currentUser?.role == "CHU_TRO"
 
-    Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { /* TODO: Navigate to create invoice */ },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Tạo hóa đơn")
-            }
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
             Text(
                 text = "Quản lý hóa đơn",
                 style = MaterialTheme.typography.headlineMedium,
@@ -76,14 +66,27 @@ fun InvoiceListScreen(
                             items(state.invoices) { invoice ->
                                 InvoiceCard(
                                     invoice = invoice,
-                                    onClick = { 
-                                        // TODO: navigate to Payment/Invoice details
+                                    onClick = {
+                                        navController.navigate("invoice_detail/${invoice.id}")
                                     }
                                 )
                             }
                         }
                     }
                 }
+            }
+        }
+
+        // FAB for admin/landlord only
+        if (isAdminOrChuTro) {
+            FloatingActionButton(
+                onClick = { navController.navigate("create_invoice") },
+                containerColor = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Tạo hóa đơn")
             }
         }
     }

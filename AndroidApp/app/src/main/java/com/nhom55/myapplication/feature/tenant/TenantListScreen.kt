@@ -86,12 +86,12 @@ fun TenantCard(tenant: Tenant, onClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "SĐT: ${tenant.phone}",
+                    text = "SĐT: ${tenant.phone ?: "Chưa cập nhật"}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Vào ở: ${tenant.moveInDate}",
+                    text = "Vào ở: ${tenant.moveInDate ?: "Chưa thuê phòng"}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline
                 )

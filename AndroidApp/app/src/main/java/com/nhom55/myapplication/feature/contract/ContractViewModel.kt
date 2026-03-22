@@ -68,7 +68,8 @@ class ContractViewModel : ViewModel() {
                 } else {
                     _createUiState.value = CreateContractUiState.Success(
                         Contract(
-                            id = "0", roomId = roomId.toString(), tenantId = tenantId.toString(),
+                            id = "0", roomId = roomId.toString(), roomName = "Phòng $roomId",
+                            tenantId = tenantId.toString(), tenantName = "Khách #$tenantId",
                             startDate = startDate, endDate = endDate, deposit = deposit, status = ContractStatus.ACTIVE
                         )
                     )

@@ -8,12 +8,42 @@ import {
 
 const router = express.Router();
 
-// GET /api/nguoiThue - Lấy danh sách người thuê (Chủ trọ/Admin)
+// GET /api/nguoiThue - Lấy danh sách người thuê đang có hợp đồng (Chủ trọ/Admin)
 router.get('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
   try {
+    const HopDong = (await import('../models/HopDong.js')).default;
+    const Phong = (await import('../models/Phong.js')).default;
+    const ChuTro = (await import('../models/ChuTro.js')).default;
+
+    let includeOptions = [
+      {
+        model: HopDong,
+        as: 'DanhSachHopDong',
+        where: { trang_thai: 1 },
+        attributes: ['id_hop_dong', 'id_phong', 'ngay_bat_dau', 'ngay_ket_thuc'],
+        required: true // INNER JOIN: chỉ lấy người thuê CÓ hợp đồng active
+      }
+    ];
+
+    // Nếu là chủ trọ, chỉ lấy người thuê đang ở phòng của mình
+    if (req.userRole === 'CHU_TRO' && req.idChuTro) {
+      const danhSachPhong = await Phong.findAll({
+        where: { id_chu_tro: req.idChuTro },
+        attributes: ['id_phong']
+      });
+      const idPhongs = danhSachPhong.map(p => p.id_phong);
+
+      includeOptions[0].where = {
+        trang_thai: 1,
+        id_phong: idPhongs
+      };
+    }
+
     const tenants = await NguoiThue.findAll({
-      order: [['ngay_vao', 'DESC']]
+      include: includeOptions,
+      order: [['ho_ten', 'ASC']]
     });
+
     res.json(tenants);
   } catch (error) {
     res.status(500).json({ error: error.message });

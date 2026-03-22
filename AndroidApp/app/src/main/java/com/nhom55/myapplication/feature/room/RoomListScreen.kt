@@ -6,6 +6,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -24,7 +29,9 @@ data class Room(
     val status: RoomStatus,
     val tenantName: String? = null,
     val area: Float, // m²
-    val description: String? = "Không có mô tả"
+    val description: String? = "Không có mô tả",
+    val address: String = "Chưa cập nhật địa chỉ",
+    val landlordName: String = "Chủ trọ"
 )
 
 enum class RoomStatus {
@@ -41,6 +48,7 @@ fun RoomListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val selectedFilter by viewModel.selectedFilter.collectAsState()
+    var selectedAddress by rememberSaveable { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -65,32 +73,78 @@ fun RoomListScreen(
             }
 
             is RoomUiState.Success -> {
-                val filteredRooms = viewModel.getFilteredRooms(state.rooms)
+                val allRooms = state.rooms
 
-                // Filter chips
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = selectedFilter == null,
-                        onClick = { viewModel.setFilter(null) },
-                        label = { Text("Tất cả") }
+                if (selectedAddress == null) {
+                    val groupedRooms = allRooms.groupBy { it.address }
+                    
+                    Text(
+                        text = "Danh sách khu trọ",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(16.dp)
                     )
-                    FilterChip(
-                        selected = selectedFilter == RoomStatus.AVAILABLE,
-                        onClick = { viewModel.setFilter(RoomStatus.AVAILABLE) },
-                        label = { Text("Còn trống") }
-                    )
-                }
+                    
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(groupedRooms.keys.toList()) { address ->
+                            val roomsInAddress = groupedRooms[address] ?: emptyList()
+                            val landlordName = roomsInAddress.firstOrNull()?.landlordName ?: "Chủ trọ"
+                            val availableCount = roomsInAddress.count { it.status == RoomStatus.AVAILABLE }
+                            
+                            LocationCard(
+                                address = address,
+                                landlordName = landlordName,
+                                totalRooms = roomsInAddress.size,
+                                availableRooms = availableCount,
+                                onClick = { selectedAddress = address }
+                            )
+                        }
+                    }
+                } else {
+                    val filteredRooms = viewModel.getFilteredRooms(allRooms.filter { it.address == selectedAddress })
 
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(filteredRooms) { room ->
-                        RoomCard(room = room, onClick = { navController.navigate("room_detail/${room.id}") })
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { selectedAddress = null }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text("Khu trọ", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                            Text(selectedAddress!!, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = selectedFilter == null,
+                            onClick = { viewModel.setFilter(null) },
+                            label = { Text("Tất cả") }
+                        )
+                        FilterChip(
+                            selected = selectedFilter == RoomStatus.AVAILABLE,
+                            onClick = { viewModel.setFilter(RoomStatus.AVAILABLE) },
+                            label = { Text("Còn trống") }
+                        )
+                    }
+
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(filteredRooms) { room ->
+                            RoomCard(room = room, onClick = { navController.navigate("room_detail/${room.id}") })
+                        }
                     }
                 }
             }
@@ -132,4 +186,54 @@ fun StatusChip(status: RoomStatus) {
 
 fun formatPrice(price: Long): String {
     return NumberFormat.getNumberInstance(Locale("vi", "VN")).format(price) + "đ"
+}
+
+@Composable
+fun LocationCard(
+    address: String,
+    landlordName: String,
+    totalRooms: Int,
+    availableRooms: Int,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = address, 
+                    style = MaterialTheme.typography.titleMedium, 
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Chủ trọ: $landlordName", 
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Tổng số phòng: $totalRooms", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    "Còn trống: $availableRooms", 
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (availableRooms > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
 }

@@ -16,7 +16,14 @@ data class RoomApiModel(
     val ten_phong: String,
     val gia_phong: Long,
     val trang_thai: String,
-    val mo_ta: String?
+    val mo_ta: String?,
+    val chu_tro: ChuTroInfo? = null
+)
+
+data class ChuTroInfo(
+    val ho_ten: String?,
+    val so_dien_thoai: String?,
+    val dia_chi: String?
 )
 
 // Extension function để convert từ API model sang UI model
@@ -34,7 +41,9 @@ fun RoomApiModel.toRoom(): Room {
         },
         tenantName = null, // TODO: Cần thêm từ API nếu có
         area = 20f, // TODO: Cần thêm từ API nếu có
-        description = mo_ta
+        description = mo_ta,
+        address = chu_tro?.dia_chi ?: "Chưa cập nhật địa chỉ",
+        landlordName = chu_tro?.ho_ten ?: "Chủ trọ"
     )
 }
 

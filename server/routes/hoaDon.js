@@ -54,9 +54,14 @@ router.get('/', async (req, res) => {
               where: { id_nguoi_thue: nguoiThue.id_nguoi_thue }
             });
             const idPhongs = hopDongs.map(hd => hd.id_phong);
-            whereCondition.id_phong = idPhongs;
+            
+            if (idPhongs.length > 0) {
+              whereCondition.id_phong = idPhongs;
+            } else {
+              return res.json([]); // Return immediately to avoid empty array bug
+            }
           } else {
-            whereCondition.id_phong = null; // force empty result if no tenant profile
+            return res.json([]);
           }
         }
       } catch (err) {
