@@ -7,7 +7,10 @@ import './models/Phong.js';
 import './models/quanHe.js';
 import './models/TaiKhoan.js';
 import './models/ThanhToan.js';
+import './models/HinhAnhPhong.js';
+import dotenv from 'dotenv';
 
+dotenv.config();
 
 const syncDatabase = async () => {
   try {

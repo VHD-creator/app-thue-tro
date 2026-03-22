@@ -23,6 +23,7 @@ import hoaDonRouter from './routes/hoaDon.js';
 import thanhToanRouter from './routes/thanhToan.js';
 import baoCaoRouter from './routes/baoCao.js';
 import authrouter from './routes/auth.js';
+import hinhAnhRouter from './routes/hinhAnhPhong.js';
 
 
 import './models/quanHe.js';
@@ -46,7 +47,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -63,6 +64,7 @@ app.use('/api/hoaDon', hoaDonRouter);
 app.use('/api/thanhToan', thanhToanRouter);
 app.use('/api/baoCao', baoCaoRouter);
 app.use('/api/auth', authrouter);
+app.use('/api/hinhAnh', hinhAnhRouter);
 
 
 // catch 404 and forward to error handler
