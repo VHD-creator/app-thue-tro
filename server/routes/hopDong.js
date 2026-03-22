@@ -2,6 +2,7 @@ import express from 'express';
 import HopDong from '../models/HopDong.js';
 import Phong from '../models/Phong.js';
 import NguoiThue from '../models/NguoiThue.js';
+import ChuTro from '../models/ChuTro.js';
 import { 
   verifyToken,
   requireChuTroOrAdmin, 
@@ -80,30 +81,45 @@ router.get('/:id_hop_dong', verifyToken, requireAuthenticated, async (req, res) 
   }
 });
 
-// POST /api/hopDong - Tạo hợp đồng mới (Chủ trọ/Admin)
-router.post('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
+// POST /api/hopDong - Tạo hợp đồng mới (Auth required)
+router.post('/', verifyToken, requireAuthenticated, async (req, res) => {
   try {
-    const { id_phong, id_nguoi_thue, ngay_bat_dau, ngay_ket_thuc, tien_coc } = req.body;
+    const { id_phong, ngay_bat_dau, ngay_ket_thuc, tien_coc } = req.body;
+    let { id_nguoi_thue } = req.body;
+
+    // Tự động phân giải id_nguoi_thue nếu user là NGUOI_THUE
+    if (req.userRole === 'NGUOI_THUE') {
+      const nguoiThueOfUser = await NguoiThue.findOne({ where: { id_tai_khoan: req.userId } });
+      if (!nguoiThueOfUser) {
+        return res.status(403).json({ error: 'Không tìm thấy hồ sơ người thuê của bạn' });
+      }
+      id_nguoi_thue = nguoiThueOfUser.id_nguoi_thue;
+    }
 
     // Validate required fields
     if (!id_phong || !id_nguoi_thue || !ngay_bat_dau || !ngay_ket_thuc || !tien_coc) {
+      console.log(1);
       return res.status(400).json({ 
         error: 'Thiếu dữ liệu: id_phong, id_nguoi_thue, ngay_bat_dau, ngay_ket_thuc, tien_coc' 
       });
+      
     }
 
     // Validate date format
     if (!validateDate(ngay_bat_dau) || !validateDate(ngay_ket_thuc)) {
+      console.log(2);
       return res.status(400).json({ error: 'Ngày phải có định dạng DD-MM-YYYY' });
     }
 
     // Validate end date after start date
     if (!isEndDateAfterStartDate(ngay_bat_dau, ngay_ket_thuc)) {
+      console.log(3);
       return res.status(400).json({ error: 'Ngày kết thúc phải sau ngày bắt đầu' });
     }
 
     // Validate amount
     if (!validateAmount(tien_coc)) {
+      console.log(4);
       return res.status(400).json({ error: 'tien_coc phải là số dương' });
     }
 
@@ -114,8 +130,9 @@ router.post('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
     }
 
     // Kiểm tra quyền tạo hợp đồng cho phòng này
-    if (req.userRole === 'CHU_TRO' && req.idChuTro) {
-      if (phong.id_chu_tro !== req.idChuTro) {
+    if (req.userRole === 'CHU_TRO') {
+      const chuTro = await ChuTro.findOne({ where: { id_tai_khoan: req.userId } });
+      if (!chuTro || phong.id_chu_tro !== chuTro.id_chu_tro) {
         return res.status(403).json({ error: 'Bạn không có quyền tạo hợp đồng cho phòng này' });
       }
     }
@@ -145,12 +162,18 @@ router.post('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
       });
     }
 
+    // Filter to YYYY-MM-DD for MySQL
+    const formatForMySQL = (dateStr) => {
+      const [d, m, y] = dateStr.split('-');
+      return `${y}-${m}-${d}`;
+    };
+
     // Create contract
     const hopDong = await HopDong.create({
       id_phong,
       id_nguoi_thue,
-      ngay_bat_dau,
-      ngay_ket_thuc,
+      ngay_bat_dau: formatForMySQL(ngay_bat_dau),
+      ngay_ket_thuc: formatForMySQL(ngay_ket_thuc),
       tien_coc,
       trang_thai: 1
     });
@@ -207,9 +230,14 @@ router.put('/:id_hop_dong', verifyToken, requireChuTroOrAdmin, async (req, res) 
       return res.status(400).json({ error: 'tien_coc phải là số dương' });
     }
 
+    const formatForMySQL = (dateStr) => {
+      const [d, m, y] = dateStr.split('-');
+      return `${y}-${m}-${d}`;
+    };
+
     // Update fields
-    if (ngay_bat_dau) hopDong.ngay_bat_dau = ngay_bat_dau;
-    if (ngay_ket_thuc) hopDong.ngay_ket_thuc = ngay_ket_thuc;
+    if (ngay_bat_dau) hopDong.ngay_bat_dau = formatForMySQL(ngay_bat_dau);
+    if (ngay_ket_thuc) hopDong.ngay_ket_thuc = formatForMySQL(ngay_ket_thuc);
     if (tien_coc) hopDong.tien_coc = tien_coc;
     if (trang_thai !== undefined) {
       hopDong.trang_thai = trang_thai;

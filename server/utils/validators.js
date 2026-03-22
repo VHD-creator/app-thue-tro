@@ -29,7 +29,8 @@ export const validateDate = (date) => {
 
 // Validate date is not in the past
 export const isDateNotInPast = (date) => {
-  const inputDate = new Date(date);
+  const [day, month, year] = date.split('-');
+  const inputDate = new Date(`${year}-${month}-${day}`);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return inputDate >= today;
@@ -37,7 +38,13 @@ export const isDateNotInPast = (date) => {
 
 // Validate end date is after start date
 export const isEndDateAfterStartDate = (startDate, endDate) => {
-  return new Date(endDate) > new Date(startDate);
+  const [startDay, startMonth, startYear] = startDate.split('-');
+  const [endDay, endMonth, endYear] = endDate.split('-');
+  
+  const start = new Date(`${startYear}-${startMonth}-${startDay}`);
+  const end = new Date(`${endYear}-${endMonth}-${endDay}`);
+  
+  return end > start;
 };
 
 // Validate amount is positive

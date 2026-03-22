@@ -134,8 +134,26 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // 4. Check password
-    const isMatch = await bcrypt.compare(password, user.mat_khau);
+    // 4. Check password (Hỗ trợ plaintext data cũ)
+    let isMatch = false;
+    try {
+      isMatch = await bcrypt.compare(password, user.mat_khau);
+    } catch (e) {
+      console.error('Bcrypt error:', e);
+    }
+
+    // Fallback: Nếu không khớp hash, check chữ trần cứng
+    if (!isMatch && password === user.mat_khau) {
+      isMatch = true;
+      // Tranh thủ hash lại luôn lưu vào DB cho an toàn các lần sau
+      try {
+        user.mat_khau = await bcrypt.hash(password, 10);
+        await user.save();
+      } catch (e) {
+        console.error('Không thể auto-hash password cũ: ', e);
+      }
+    }
+
     if (!isMatch) {
       return res.status(401).json({
         message: 'Sai tên đăng nhập hoặc mật khẩu',
@@ -194,9 +212,25 @@ router.get('/me', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Tài khoản không tồn tại' });
     }
 
+    const userData = user.toJSON();
+    const formattedUser = {
+      id_tai_khoan: userData.id_tai_khoan,
+      ten_dang_nhap: userData.ten_dang_nhap,
+      vai_tro: userData.vai_tro,
+      trang_thai: userData.trang_thai
+    };
+
+    if (userData.vai_tro === 'CHU_TRO' || userData.vai_tro === 'ADMIN') {
+      formattedUser.chu_tro = userData.ChuTro;
+    }
+
+    if (userData.vai_tro === 'NGUOI_THUE') {
+      formattedUser.nguoi_thue = userData.NguoiThue;
+    }
+
     res.json({
       message: 'Lấy thông tin thành công',
-      user
+      user: formattedUser
     });
   } catch (error) {
     console.error(error);
