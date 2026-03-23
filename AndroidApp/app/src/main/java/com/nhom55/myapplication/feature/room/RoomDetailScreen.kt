@@ -3,6 +3,8 @@ package com.nhom55.myapplication.feature.room
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
@@ -169,7 +171,8 @@ fun RoomDetailContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 4.dp),
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 4.dp)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(
@@ -222,12 +225,6 @@ fun RoomDetailContent(
             icon = Icons.Default.LocationOn,
             label = "Vị trí",
             value = "Tầng ${room.floor}"
-        )
-
-        DetailItem(
-            icon = Icons.Default.Info,
-            label = "Diện tích",
-            value = "${room.area} m²"
         )
 
         DetailItem(

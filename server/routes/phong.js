@@ -213,6 +213,32 @@ router.delete('/:id_phong', verifyToken, requireChuTroOrAdmin, checkPhongOwnersh
       return res.status(400).json({ error: 'Không thể xóa phòng đang cho thuê' });
     }
 
+    // Xóa các dữ liệu liên kết để tránh lỗi Foreign Key Constraint
+    try {
+      const AnhPhong = (await import('../models/HinhAnhPhong.js')).default;
+      await AnhPhong.destroy({ where: { id_phong: req.params.id_phong } });
+
+      const HoaDon = (await import('../models/HoaDon.js')).default;
+      const ThanhToan = (await import('../models/ThanhToan.js')).default;
+      
+      // Lấy danh sách hóa đơn của phòng
+      const hoaDons = await HoaDon.findAll({ where: { id_phong: req.params.id_phong } });
+      const idHoaDons = hoaDons.map(hd => hd.id_hoa_don);
+      
+      if (idHoaDons.length > 0) {
+        // Xóa thanh toán của các hóa đơn này trước
+        await ThanhToan.destroy({ where: { id_hoa_don: idHoaDons } });
+        // Sau đó xóa hóa đơn
+        await HoaDon.destroy({ where: { id_phong: req.params.id_phong } });
+      }
+
+      const HopDong = (await import('../models/HopDong.js')).default;
+      await HopDong.destroy({ where: { id_phong: req.params.id_phong } });
+    } catch (err) {
+      console.error("Lỗi xóa dữ liệu liên kết:", err);
+      // Tiếp tục để thử xóa phòng, mặc dù có thể sẽ lỗi nếu chưa xóa hết FK
+    }
+
     await room.destroy();
     res.json({ 
       message: 'Xóa phòng thành công',

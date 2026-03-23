@@ -23,6 +23,10 @@ fun ContractListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.loadContracts()
+    }
+
     Column(
         modifier = Modifier.fillMaxSize()
     ) {

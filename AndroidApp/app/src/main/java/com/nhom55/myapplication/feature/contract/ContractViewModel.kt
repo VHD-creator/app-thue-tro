@@ -28,6 +28,9 @@ class ContractViewModel : ViewModel() {
     private val _createUiState = MutableStateFlow<CreateContractUiState>(CreateContractUiState.Idle)
     val createUiState: StateFlow<CreateContractUiState> = _createUiState.asStateFlow()
 
+    private val _isOperating = MutableStateFlow(false)
+    val isOperating: StateFlow<Boolean> = _isOperating.asStateFlow()
+
     init {
         loadContracts()
     }
@@ -41,7 +44,7 @@ class ContractViewModel : ViewModel() {
                 _uiState.value = ContractUiState.Success(contracts)
             } catch (e: Exception) {
                 _uiState.value = ContractUiState.Error(
-                    e.message ?: "Đã xảy ra lỗi khi tải dữ liệu kết nối"
+                    e.message ?: "Đã xảy ra lỗi khi tải dữ liệu"
                 )
             }
         }
@@ -64,7 +67,7 @@ class ContractViewModel : ViewModel() {
                 val response = RetrofitInstance.contractApi.createContract(request)
                 if (response.hopDong != null) {
                     _createUiState.value = CreateContractUiState.Success(response.hopDong.toContract())
-                    loadContracts() // Refresh contract list
+                    loadContracts()
                 } else {
                     _createUiState.value = CreateContractUiState.Success(
                         Contract(
@@ -82,7 +85,77 @@ class ContractViewModel : ViewModel() {
         }
     }
 
+    fun updateContract(
+        id: Int,
+        ngayBatDau: String?,
+        ngayKetThuc: String?,
+        tienCoc: Long?,
+        trangThai: Int?,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            _isOperating.value = true
+            try {
+                val body = mutableMapOf<String, Any?>()
+                if (ngayBatDau != null) body["ngay_bat_dau"] = ngayBatDau
+                if (ngayKetThuc != null) body["ngay_ket_thuc"] = ngayKetThuc
+                if (tienCoc != null) body["tien_coc"] = tienCoc
+                if (trangThai != null) body["trang_thai"] = trangThai
+
+                val response = RetrofitInstance.contractApi.updateContract(id, body)
+                if (response.isSuccessful) {
+                    loadContracts()
+                    onSuccess()
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    val errorMsg = parseErrorMessage(errorBody) ?: "Lỗi ${response.code()}"
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Đã xảy ra lỗi")
+            } finally {
+                _isOperating.value = false
+            }
+        }
+    }
+
+    fun deleteContract(
+        id: Int,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            _isOperating.value = true
+            try {
+                val response = RetrofitInstance.contractApi.deleteContract(id)
+                if (response.isSuccessful) {
+                    loadContracts()
+                    onSuccess()
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    val errorMsg = parseErrorMessage(errorBody) ?: "Lỗi ${response.code()}"
+                    onError(errorMsg)
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Đã xảy ra lỗi")
+            } finally {
+                _isOperating.value = false
+            }
+        }
+    }
+
     fun resetCreateState() {
         _createUiState.value = CreateContractUiState.Idle
+    }
+
+    private fun parseErrorMessage(errorBody: String?): String? {
+        if (errorBody == null) return null
+        return try {
+            val json = com.google.gson.JsonParser.parseString(errorBody).asJsonObject
+            json.get("error")?.asString
+        } catch (e: Exception) {
+            null
+        }
     }
 }

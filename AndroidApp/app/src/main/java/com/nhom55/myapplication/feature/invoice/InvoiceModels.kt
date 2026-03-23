@@ -39,7 +39,7 @@ data class Invoice(
 )
 
 enum class InvoiceStatus {
-    UNPAID, PAID, PARTIAL
+    UNPAID, PAID, PENDING
 }
 
 fun InvoiceApiModel.toInvoice(): Invoice {
@@ -58,7 +58,7 @@ fun InvoiceApiModel.toInvoice(): Invoice {
         totalCost = tong_tien,
         status = when (trang_thai) {
             1 -> InvoiceStatus.PAID
-            2 -> InvoiceStatus.PARTIAL
+            2 -> InvoiceStatus.PENDING
             else -> InvoiceStatus.UNPAID
         }
     )

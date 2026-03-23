@@ -81,7 +81,6 @@ fun CreateEditRoomScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Custom Header tránh lỗi double Insets của Scaffold lồng nhau
         Row(
             modifier = Modifier
                 .fillMaxWidth()

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,41 +24,55 @@ fun TenantListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        when (val state = uiState) {
-            is TenantUiState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
+    LaunchedEffect(Unit) {
+        viewModel.loadTenants()
+    }
 
-            is TenantUiState.Error -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(text = state.message, color = MaterialTheme.colorScheme.error)
-                        Button(onClick = { viewModel.loadTenants() }) { Text("Thử lại") }
-                    }
-                }
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { navController.navigate("create_edit_tenant/new") }
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Thêm khách thuê")
             }
-
-            is TenantUiState.Success -> {
-                if (state.tenants.isEmpty()) {
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(paddingValues)
+        ) {
+            when (val state = uiState) {
+                is TenantUiState.Loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Chưa có khách thuê nào đang hoạt động", style = MaterialTheme.typography.bodyLarge)
+                        CircularProgressIndicator()
                     }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(state.tenants) { tenant ->
-                            TenantCard(tenant = tenant, onClick = { navController.navigate("tenant_detail/${tenant.id}") })
+                }
+
+                is TenantUiState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(text = state.message, color = MaterialTheme.colorScheme.error)
+                            Button(onClick = { viewModel.loadTenants() }) { Text("Thử lại") }
+                        }
+                    }
+                }
+
+                is TenantUiState.Success -> {
+                    if (state.tenants.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Chưa có khách thuê nào đang hoạt động", style = MaterialTheme.typography.bodyLarge)
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(state.tenants) { tenant ->
+                                TenantCard(tenant = tenant, onClick = { navController.navigate("tenant_detail/${tenant.id}") })
+                            }
                         }
                     }
                 }

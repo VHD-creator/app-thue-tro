@@ -37,7 +37,6 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object Contracts : Screen("contracts", "Hợp đồng", Icons.Default.Info)
     object ContractDetail : Screen("contract_detail/{contractId}", "Chi tiết hợp đồng", Icons.Default.Info)
     object Invoices : Screen("invoices", "Hóa đơn", Icons.Default.List)
-    object Payments : Screen("payments", "Thanh toán", Icons.Default.Star)
     object Reports : Screen("reports", "Báo cáo", Icons.Default.Check)
     object Settings : Screen("settings", "Cài đặt", Icons.Default.Settings)
     object Profile : Screen("profile", "Hồ sơ cá nhân", Icons.Default.Person)
@@ -184,6 +183,16 @@ fun MainScreen() {
                     val tenantId = backStackEntry.arguments?.getString("tenantId")
                     TenantDetailScreen(tenantId = tenantId, navController = navController)
                 }
+                composable(
+                    route = "create_edit_tenant/{tenantId}",
+                    arguments = listOf(navArgument("tenantId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val tenantId = backStackEntry.arguments?.getString("tenantId") ?: "new"
+                    com.nhom55.myapplication.feature.tenant.CreateEditTenantScreen(
+                        tenantId = if (tenantId == "new") null else tenantId,
+                        navController = navController
+                    )
+                }
                 composable(Screen.Contracts.route) {
                     ContractListScreen(navController = navController)
                 }
@@ -218,9 +227,6 @@ fun MainScreen() {
                         roomId = roomId,
                         navController = navController
                     )
-                }
-                composable(Screen.Payments.route) {
-                    PlaceholderScreen("Thanh toán")
                 }
                 
                 composable(

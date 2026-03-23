@@ -29,8 +29,6 @@ data class Room(
     val floor: Int,
     val price: Long,
     val status: RoomStatus,
-    val tenantName: String? = null,
-    val area: Float, // m²
     val description: String? = "Không có mô tả",
     val address: String = "Chưa cập nhật địa chỉ",
     val landlordName: String = "Chủ trọ",
@@ -62,6 +60,10 @@ fun RoomListScreen(
     val selectedFilter by viewModel.selectedFilter.collectAsState()
     var selectedAddress by rememberSaveable { mutableStateOf<String?>(null) }
     
+    LaunchedEffect(Unit) {
+        viewModel.loadRooms()
+    }
+
     val currentUser by SessionManager.currentUser.collectAsState()
     val isAdminOrChuTro = currentUser?.role == "ADMIN" || currentUser?.role == "CHU_TRO"
 

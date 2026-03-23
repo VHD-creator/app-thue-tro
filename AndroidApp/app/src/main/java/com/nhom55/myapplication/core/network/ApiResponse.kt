@@ -53,8 +53,6 @@ fun RoomApiModel.toRoom(): Room {
             "2" -> RoomStatus.MAINTENANCE
             else -> RoomStatus.AVAILABLE
         },
-        tenantName = null, // TODO: Cần thêm từ API nếu có
-        area = 20f, // TODO: Cần thêm từ API nếu có
         description = mo_ta,
         address = chu_tro?.dia_chi ?: "Chưa cập nhật địa chỉ",
         landlordName = chu_tro?.ho_ten ?: "Chủ trọ"
