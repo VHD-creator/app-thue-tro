@@ -164,6 +164,9 @@ fun MainScreen() {
                 composable("all_rooms") { // Custom route for tenant to view all locations/rooms
                     RoomListScreen(navController = navController)
                 }
+                composable("my_room") {
+                    com.nhom55.myapplication.feature.room.MyRoomScreen(navController = navController)
+                }
                 composable(Screen.Login.route) {
                     LoginScreen(navController = navController)
                 }
@@ -203,6 +206,16 @@ fun MainScreen() {
                 }
                 composable("create_invoice") {
                     com.nhom55.myapplication.feature.invoice.CreateInvoiceScreen(
+                        navController = navController
+                    )
+                }
+                composable(
+                    route = "create_edit_room/{roomId}",
+                    arguments = listOf(navArgument("roomId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val roomId = backStackEntry.arguments?.getString("roomId") ?: "new"
+                    com.nhom55.myapplication.feature.room.CreateEditRoomScreen(
+                        roomId = roomId,
                         navController = navController
                     )
                 }

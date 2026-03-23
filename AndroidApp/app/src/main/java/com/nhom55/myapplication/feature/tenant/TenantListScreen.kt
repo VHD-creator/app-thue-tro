@@ -46,13 +46,19 @@ fun TenantListScreen(
             }
 
             is TenantUiState.Success -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(state.tenants) { tenant ->
-                        TenantCard(tenant = tenant, onClick = { navController.navigate("tenant_detail/${tenant.id}") })
+                if (state.tenants.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Chưa có khách thuê nào đang hoạt động", style = MaterialTheme.typography.bodyLarge)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(state.tenants) { tenant ->
+                            TenantCard(tenant = tenant, onClick = { navController.navigate("tenant_detail/${tenant.id}") })
+                        }
                     }
                 }
             }

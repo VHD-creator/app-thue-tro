@@ -49,9 +49,16 @@ fun TenantDashboardScreen(navController: NavHostController) {
         )
 
         DashboardCard(
-            title = "Phòng Trọ 55",
-            description = "Lướt xem danh sách các khu nhà và tìm thuê phòng",
+            title = "Phòng đã thuê",
+            description = "Xem thông tin chi tiết phòng bạn đang ở",
             icon = Icons.Default.Home,
+            onClick = { navController.navigate("my_room") }
+        )
+
+        DashboardCard(
+            title = "Phòng Trọ 55",
+            description = "Lướt xem các khu nhà và tìm thuê phòng mới",
+            icon = Icons.Default.List,
             onClick = { navController.navigate("all_rooms") }
         )
 

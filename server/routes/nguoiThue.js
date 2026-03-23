@@ -53,7 +53,18 @@ router.get('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
 // GET /api/nguoiThue/:id_nguoi_thue - Chi tiết người thuê (Auth required)
 router.get('/:id_nguoi_thue', verifyToken, requireAuthenticated, async (req, res) => {
   try {
-    const tenant = await NguoiThue.findByPk(req.params.id_nguoi_thue);
+    const HopDong = (await import('../models/HopDong.js')).default;
+    const tenant = await NguoiThue.findByPk(req.params.id_nguoi_thue, {
+      include: [
+        {
+          model: HopDong,
+          as: 'DanhSachHopDong',
+          where: { trang_thai: 1 },
+          attributes: ['id_hop_dong', 'id_phong', 'ngay_bat_dau', 'ngay_ket_thuc'],
+          required: false
+        }
+      ]
+    });
     
     if (!tenant) {
       return res.status(404).json({ error: 'Người thuê không tồn tại' });
@@ -79,7 +90,7 @@ router.get('/:id_nguoi_thue', verifyToken, requireAuthenticated, async (req, res
 // POST /api/nguoiThue - Tạo người thuê mới (Chủ trọ/Admin)
 router.post('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
   try {
-    const { ho_ten, cccd, so_dien_thoai, email, ngay_vao, ngay_ra, id_tai_khoan } = req.body;
+    const { ho_ten, cccd, so_dien_thoai, email, id_tai_khoan } = req.body;
 
     // Validation
     if (!ho_ten || !cccd) {
@@ -102,8 +113,6 @@ router.post('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
       cccd,
       so_dien_thoai,
       email,
-      ngay_vao,
-      ngay_ra,
       id_tai_khoan
     });
 
@@ -125,7 +134,7 @@ router.put('/:id_nguoi_thue', verifyToken, requireChuTroOrAdmin, async (req, res
       return res.status(404).json({ error: 'Người thuê không tồn tại' });
     }
 
-    const { ho_ten, cccd, so_dien_thoai, email, ngay_vao, ngay_ra } = req.body;
+    const { ho_ten, cccd, so_dien_thoai, email } = req.body;
 
     // Nếu cập nhật CCCD, kiểm tra trùng lặp
     if (cccd && cccd !== tenant.cccd) {
@@ -145,8 +154,6 @@ router.put('/:id_nguoi_thue', verifyToken, requireChuTroOrAdmin, async (req, res
     if (ho_ten) tenant.ho_ten = ho_ten;
     if (so_dien_thoai) tenant.so_dien_thoai = so_dien_thoai;
     if (email) tenant.email = email;
-    if (ngay_vao) tenant.ngay_vao = ngay_vao;
-    if (ngay_ra) tenant.ngay_ra = ngay_ra;
 
     await tenant.save();
     res.json({

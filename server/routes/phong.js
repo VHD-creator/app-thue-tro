@@ -23,34 +23,55 @@ router.get('/trong', async (req, res) => {
   }
 });
 
+// GET /api/phong/cua-toi - Lấy phòng hiện tại của người thuê
+router.get('/cua-toi', verifyToken, async (req, res) => {
+  try {
+    if (req.userRole !== 'NGUOI_THUE') {
+      return res.status(403).json({ error: 'Chỉ người thuê mới sử dụng API này' });
+    }
+    
+    // Tìm ID người thuê
+    const NguoiThue = (await import('../models/NguoiThue.js')).default;
+    const nguoiThue = await NguoiThue.findOne({ where: { id_tai_khoan: req.userId } });
+    
+    if (!nguoiThue) {
+      return res.status(404).json({ error: 'Không tìm thấy hồ sơ người thuê' });
+    }
+
+    // Tìm hợp đồng đang active
+    const HopDong = (await import('../models/HopDong.js')).default;
+    const activeContract = await HopDong.findOne({
+      where: { id_nguoi_thue: nguoiThue.id_nguoi_thue, trang_thai: 1 }
+    });
+
+    if (!activeContract) {
+      return res.status(404).json({ error: 'Bạn chưa thuê phòng nào' });
+    }
+
+    // Lấy thông tin phòng
+    const room = await Phong.findByPk(activeContract.id_phong);
+    res.json(room);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+import { optionalAuth } from '../middlewares/auth.js';
+
 // GET /api/phong - Danh sách tất cả phòng
 // - Public: xem tất cả
 // - Chủ trọ (nếu có token): chỉ xem phòng của mình
 // - Admin: xem tất cả
-router.get('/', async (req, res) => {
+router.get('/', optionalAuth, async (req, res) => {
   try {
     let whereCondition = {};
     
-    // Nếu có token, parse để lấy role
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.substring(7);
-        const jwt = await import('jsonwebtoken');
-        const decoded = jwt.default.verify(token, process.env.JWT_SECRET);
-        
-        const taiKhoan = await TaiKhoan.findByPk(decoded.id);
-        
-        if (taiKhoan?.vai_tro === 'CHU_TRO') {
-          const chuTro = await ChuTro.findOne({ 
-            where: { id_tai_khoan: taiKhoan.id_tai_khoan } 
-          });
-          if (chuTro) {
-            whereCondition.id_chu_tro = chuTro.id_chu_tro;
-          }
-        }
-      } catch (err) {
-        // Token không hợp lệ, bỏ qua và trả về tất cả phòng (public)
+    if (req.userRole === 'CHU_TRO') {
+      const chuTro = await ChuTro.findOne({ 
+        where: { id_tai_khoan: req.userId } 
+      });
+      if (chuTro) {
+        whereCondition.id_chu_tro = chuTro.id_chu_tro;
       }
     }
     

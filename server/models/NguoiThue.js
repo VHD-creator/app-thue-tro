@@ -20,12 +20,6 @@ const NguoiThue = sequelize.define('NguoiThue', {
   email: {
     type: DataTypes.STRING(100)
   },
-  ngay_vao: {
-    type: DataTypes.DATE
-  },
-  ngay_ra: {
-    type: DataTypes.DATE
-  },
   id_tai_khoan: {
     type: DataTypes.INTEGER,
     unique: true,

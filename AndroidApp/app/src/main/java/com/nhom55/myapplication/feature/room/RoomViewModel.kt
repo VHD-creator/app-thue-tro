@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.nhom55.myapplication.core.network.toHinhAnhPhong
 
 sealed class RoomUiState {
     object Loading : RoomUiState()
@@ -21,6 +22,9 @@ class RoomViewModel : ViewModel() {
 
     private val _selectedFilter = MutableStateFlow<RoomStatus?>(null)
     val selectedFilter: StateFlow<RoomStatus?> = _selectedFilter.asStateFlow()
+
+    private val _roomImages = MutableStateFlow<Map<String, List<com.nhom55.myapplication.feature.room.HinhAnhPhong>>>(emptyMap())
+    val roomImages: StateFlow<Map<String, List<com.nhom55.myapplication.feature.room.HinhAnhPhong>>> = _roomImages.asStateFlow()
 
     init {
         loadRooms()
@@ -57,6 +61,21 @@ class RoomViewModel : ViewModel() {
             state.rooms.find { it.id == roomId }
         } else {
             null
+        }
+    }
+
+    fun loadRoomImages(roomId: String) {
+        // Only load if not in map
+        if (_roomImages.value.containsKey(roomId)) return
+        viewModelScope.launch {
+            try {
+                val imagesApiModel = RetrofitInstance.api.getRoomImages(roomId.toInt())
+                val images = imagesApiModel.map { it.toHinhAnhPhong() }
+                _roomImages.value = _roomImages.value.toMutableMap().apply { put(roomId, images) }
+            } catch (e: Exception) {
+                // Log or handle error if needed
+                _roomImages.value = _roomImages.value.toMutableMap().apply { put(roomId, emptyList()) }
+            }
         }
     }
 }

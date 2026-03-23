@@ -74,4 +74,7 @@ dependencies {
 
     // Gson
     implementation("com.google.code.gson:gson:2.10.1")
+    
+    // Coil (Image Loading)
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

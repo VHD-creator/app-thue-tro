@@ -1,26 +1,28 @@
 package com.nhom55.myapplication.feature.contract
 
+import com.google.gson.annotations.SerializedName
+
 data class ContractApiModel(
-    val id_hop_dong: Int,
-    val id_phong: Int,
-    val id_nguoi_thue: Int,
-    val ngay_bat_dau: String,
-    val ngay_ket_thuc: String,
-    val tien_coc: Long,
-    val trang_thai: Int,
-    val Phong: ContractPhongInfo? = null,
-    val NguoiThue: ContractNguoiThueInfo? = null
+    @SerializedName("id_hop_dong") val id_hop_dong: Int,
+    @SerializedName("id_phong") val id_phong: Int,
+    @SerializedName("id_nguoi_thue") val id_nguoi_thue: Int,
+    @SerializedName("ngay_bat_dau") val ngay_bat_dau: String,
+    @SerializedName("ngay_ket_thuc") val ngay_ket_thuc: String,
+    @SerializedName("tien_coc") val tien_coc: Long,
+    @SerializedName("trang_thai") val trang_thai: Int,
+    @SerializedName("Phong") val Phong: ContractPhongInfo? = null,
+    @SerializedName("NguoiThue") val NguoiThue: ContractNguoiThueInfo? = null
 )
 
 data class ContractPhongInfo(
-    val id_phong: Int,
-    val ten_phong: String?,
-    val gia_phong: Double?
+    @SerializedName("id_phong") val id_phong: Int,
+    @SerializedName("ten_phong") val ten_phong: String?,
+    @SerializedName("gia_phong") val gia_phong: Double?
 )
 
 data class ContractNguoiThueInfo(
-    val id_nguoi_thue: Int,
-    val ho_ten: String?
+    @SerializedName("id_nguoi_thue") val id_nguoi_thue: Int,
+    @SerializedName("ho_ten") val ho_ten: String?
 )
 
 data class ContractRequest(
@@ -60,8 +62,8 @@ fun ContractApiModel.toContract(): Contract {
         roomName = Phong?.ten_phong ?: "Phòng $id_phong",
         tenantId = id_nguoi_thue.toString(),
         tenantName = NguoiThue?.ho_ten ?: "Khách #$id_nguoi_thue",
-        startDate = ngay_bat_dau,
-        endDate = ngay_ket_thuc,
+        startDate = com.nhom55.myapplication.core.utils.DateFormatter.formatDateOnly(ngay_bat_dau) ?: ngay_bat_dau,
+        endDate = com.nhom55.myapplication.core.utils.DateFormatter.formatDateOnly(ngay_ket_thuc) ?: ngay_ket_thuc,
         deposit = tien_coc,
         status = if (trang_thai == 1) ContractStatus.ACTIVE else ContractStatus.EXPIRED
     )

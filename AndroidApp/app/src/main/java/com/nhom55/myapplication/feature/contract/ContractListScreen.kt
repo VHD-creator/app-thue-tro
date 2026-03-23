@@ -86,12 +86,12 @@ fun ContractCard(contract: Contract, onClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Phòng: ${contract.roomId}",
+                    text = "Phòng: ${contract.roomName}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Người thuê: ${contract.tenantId}",
+                    text = "Người thuê: ${contract.tenantName}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline
                 )

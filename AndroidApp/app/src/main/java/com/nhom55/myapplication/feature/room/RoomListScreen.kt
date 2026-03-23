@@ -17,6 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.nhom55.myapplication.core.session.SessionManager
+import androidx.compose.material.icons.filled.Add
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -31,7 +33,17 @@ data class Room(
     val area: Float, // m²
     val description: String? = "Không có mô tả",
     val address: String = "Chưa cập nhật địa chỉ",
-    val landlordName: String = "Chủ trọ"
+    val landlordName: String = "Chủ trọ",
+    val images: List<HinhAnhPhong> = emptyList() // Thêm ds ảnh, mặc định empty
+)
+
+data class HinhAnhPhong(
+    val id: Int,
+    val url: String,
+    val type: String,
+    val isAvatar: Boolean,
+    val order: Int,
+    val description: String?
 )
 
 enum class RoomStatus {
@@ -49,10 +61,14 @@ fun RoomListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val selectedFilter by viewModel.selectedFilter.collectAsState()
     var selectedAddress by rememberSaveable { mutableStateOf<String?>(null) }
+    
+    val currentUser by SessionManager.currentUser.collectAsState()
+    val isAdminOrChuTro = currentUser?.role == "ADMIN" || currentUser?.role == "CHU_TRO"
 
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
         when (val state = uiState) {
             is RoomUiState.Loading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -75,54 +91,18 @@ fun RoomListScreen(
             is RoomUiState.Success -> {
                 val allRooms = state.rooms
 
-                if (selectedAddress == null) {
-                    val groupedRooms = allRooms.groupBy { it.address }
-                    
+                if (currentUser?.role == "CHU_TRO") {
+                    val filteredRooms = viewModel.getFilteredRooms(allRooms)
+
                     Text(
-                        text = "Danh sách khu trọ",
+                        text = "Danh sách phòng",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(16.dp)
                     )
-                    
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(groupedRooms.keys.toList()) { address ->
-                            val roomsInAddress = groupedRooms[address] ?: emptyList()
-                            val landlordName = roomsInAddress.firstOrNull()?.landlordName ?: "Chủ trọ"
-                            val availableCount = roomsInAddress.count { it.status == RoomStatus.AVAILABLE }
-                            
-                            LocationCard(
-                                address = address,
-                                landlordName = landlordName,
-                                totalRooms = roomsInAddress.size,
-                                availableRooms = availableCount,
-                                onClick = { selectedAddress = address }
-                            )
-                        }
-                    }
-                } else {
-                    val filteredRooms = viewModel.getFilteredRooms(allRooms.filter { it.address == selectedAddress })
 
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = { selectedAddress = null }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text("Khu trọ", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                            Text(selectedAddress!!, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         FilterChip(
@@ -146,7 +126,95 @@ fun RoomListScreen(
                             RoomCard(room = room, onClick = { navController.navigate("room_detail/${room.id}") })
                         }
                     }
+                } else {
+                    if (selectedAddress == null) {
+                        val groupedRooms = allRooms.groupBy { it.address }
+                        
+                        Text(
+                            text = "Danh sách khu trọ",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                        
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            items(groupedRooms.keys.toList()) { address ->
+                                val roomsInAddress = groupedRooms[address] ?: emptyList()
+                                val landlordName = roomsInAddress.firstOrNull()?.landlordName ?: "Chủ trọ"
+                                val availableCount = roomsInAddress.count { it.status == RoomStatus.AVAILABLE }
+                                
+                                LocationCard(
+                                    address = address,
+                                    landlordName = landlordName,
+                                    totalRooms = roomsInAddress.size,
+                                    availableRooms = availableCount,
+                                    onClick = { selectedAddress = address }
+                                )
+                            }
+                        }
+                    } else {
+                        val filteredRooms = viewModel.getFilteredRooms(allRooms.filter { it.address == selectedAddress })
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = { selectedAddress = null }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text("Khu trọ", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                Text(selectedAddress!!, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = selectedFilter == null,
+                                onClick = { viewModel.setFilter(null) },
+                                label = { Text("Tất cả") }
+                            )
+                            FilterChip(
+                                selected = selectedFilter == RoomStatus.AVAILABLE,
+                                onClick = { viewModel.setFilter(RoomStatus.AVAILABLE) },
+                                label = { Text("Còn trống") }
+                            )
+                        }
+
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(filteredRooms) { room ->
+                                RoomCard(room = room, onClick = { navController.navigate("room_detail/${room.id}") })
+                            }
+                        }
+                    }
                 }
+            }
+        }
+        // Đóng ngoặc cho Column
+        }
+
+        if (isAdminOrChuTro) {
+            FloatingActionButton(
+                onClick = { navController.navigate("create_edit_room/new") },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Thêm phòng mới")
             }
         }
     }

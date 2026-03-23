@@ -15,60 +15,49 @@ const router = express.Router();
 // GET /api/hoaDon - Danh sách hóa đơn
 // Chủ trọ: chỉ xem hóa đơn của phòng mình
 // Admin: xem tất cả
-// Public: xem tất cả (có thể đổi thành require auth)
-router.get('/', async (req, res) => {
+// Người thuê: xem hóa đơn của phòng mình
+router.get('/', verifyToken, async (req, res) => {
   try {
     let whereCondition = {};
     
-    // Nếu có token, parse để filter
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.substring(7);
-        const jwt = await import('jsonwebtoken');
-        const decoded = jwt.default.verify(token, process.env.JWT_SECRET);
-        
-        const taiKhoan = await TaiKhoan.findByPk(decoded.id_tai_khoan);
-        
-        if (taiKhoan?.vai_tro === 'CHU_TRO') {
-          const chuTro = await ChuTro.findOne({ 
-            where: { id_tai_khoan: taiKhoan.id_tai_khoan } 
-          });
-          
-          if (chuTro) {
-            const danhSachPhong = await Phong.findAll({
-              where: { id_chu_tro: chuTro.id_chu_tro },
-              attributes: ['id_phong']
-            });
-            
-            const idPhongs = danhSachPhong.map(p => p.id_phong);
-            whereCondition.id_phong = idPhongs;
-          }
-        } else if (taiKhoan?.vai_tro === 'NGUOI_THUE') {
-          const nguoiThue = await (await import('../models/NguoiThue.js')).default.findOne({ 
-            where: { id_tai_khoan: taiKhoan.id_tai_khoan } 
-          });
-          if (nguoiThue) {
-            const HopDong = (await import('../models/HopDong.js')).default;
-            const hopDongs = await HopDong.findAll({
-              where: { id_nguoi_thue: nguoiThue.id_nguoi_thue }
-            });
-            const idPhongs = hopDongs.map(hd => hd.id_phong);
-            
-            if (idPhongs.length > 0) {
-              whereCondition.id_phong = idPhongs;
-            } else {
-              return res.json([]); // Return immediately to avoid empty array bug
-            }
-          } else {
-            return res.json([]);
-          }
-        }
-      } catch (err) {
-        // Token không hợp lệ, bỏ qua
+    if (req.userRole === 'CHU_TRO') {
+      const ChuTro = (await import('../models/ChuTro.js')).default;
+      const chuTro = await ChuTro.findOne({ 
+        where: { id_tai_khoan: req.userId } 
+      });
+      if (!chuTro) return res.json([]);
+      
+      const danhSachPhong = await Phong.findAll({
+        where: { id_chu_tro: chuTro.id_chu_tro },
+        attributes: ['id_phong']
+      });
+      
+      const idPhongs = danhSachPhong.map(p => p.id_phong);
+      if (idPhongs.length > 0) {
+        whereCondition.id_phong = idPhongs;
+      } else {
+        return res.json([]);
+      }
+    } else if (req.userRole === 'NGUOI_THUE') {
+      const nguoiThue = await (await import('../models/NguoiThue.js')).default.findOne({ 
+        where: { id_tai_khoan: req.userId } 
+      });
+      if (!nguoiThue) return res.json([]);
+      
+      const HopDong = (await import('../models/HopDong.js')).default;
+      const hopDongs = await HopDong.findAll({
+        where: { id_nguoi_thue: nguoiThue.id_nguoi_thue }
+      });
+      
+      const idPhongs = hopDongs.map(hd => hd.id_phong);
+      if (idPhongs.length > 0) {
+        whereCondition.id_phong = idPhongs;
+      } else {
+        return res.json([]);
       }
     }
     
+    // Admin xem tất cả (whereCondition = {})
     const hoaDons = await HoaDon.findAll({
       where: whereCondition,
       include: [
