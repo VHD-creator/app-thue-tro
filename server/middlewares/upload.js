@@ -18,7 +18,6 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    // Tạo tên file unique: timestamp_randomstring_originalname
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
     const nameWithoutExt = path.basename(file.originalname, ext);
@@ -29,7 +28,6 @@ const storage = multer.diskStorage({
 // File filter - chỉ chấp nhận ảnh
 const fileFilter = (req, file, cb) => {
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-  
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
@@ -43,7 +41,7 @@ const upload = multer({
   fileFilter: fileFilter,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB
-    files: 10 // Tối đa 10 ảnh mỗi lần upload
+    files: 10
   }
 });
 
@@ -51,27 +49,20 @@ const upload = multer({
 export const handleUploadError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ 
-        error: 'File quá lớn. Kích thước tối đa là 5MB' 
-      });
+      return res.status(400).json({ error: 'File quá lớn. Kích thước tối đa là 5MB' });
     }
     if (err.code === 'LIMIT_FILE_COUNT') {
-      return res.status(400).json({ 
-        error: 'Quá nhiều file. Tối đa 10 ảnh mỗi lần upload' 
-      });
+      return res.status(400).json({ error: 'Quá nhiều file. Tối đa 10 ảnh mỗi lần upload' });
     }
     return res.status(400).json({ error: err.message });
   }
-  
   if (err) {
     return res.status(400).json({ error: err.message });
   }
-  
   next();
 };
 
-// Export các middleware
-export const uploadSingle = upload.single('image'); // Upload 1 ảnh
-export const uploadMultiple = upload.array('images', 10); // Upload nhiều ảnh (max 10)
+export const uploadSingle = upload.single('image');
+export const uploadMultiple = upload.array('images', 10);
 
 export default upload;

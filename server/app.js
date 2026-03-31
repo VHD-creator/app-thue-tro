@@ -6,13 +6,10 @@ import logger from 'morgan';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import bodyParser from 'body-parser';
-import dotenv from 'dotenv';
+import cors from 'cors';
 
-
-dotenv.config({ path: './server/.env' });
-
-console.log('DB_USER:', process.env.DB_USER);
-
+// ✅ database.js đã tự gọi dotenv.config() bên trong
+// nên không cần gọi lại ở đây
 import sequelize from './config/database.js';
 
 import phongRouter from './routes/phong.js';
@@ -22,25 +19,28 @@ import taiKhoanRouter from './routes/taiKhoan.js';
 import hoaDonRouter from './routes/hoaDon.js';
 import thanhToanRouter from './routes/thanhToan.js';
 import baoCaoRouter from './routes/baoCao.js';
-import authrouter from './routes/auth.js';
+import authRouter from './routes/auth.js';
 import hinhAnhRouter from './routes/hinhAnhPhong.js';
-
+import chatbotRouter from './routes/chatBot.js';
+import yeuCauThueRouter from './routes/yeuCauThue.js';
+import vietQRRouter from './routes/vietQR.js';
+import chuTroRouter from './routes/chuTro.js';
 
 import './models/quanHe.js';
 import './services/scheduler.js';
 
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-var app = express();
+const app = express();
+
+// ✅ CORS
+app.use(cors());
 
 // Kiểm tra kết nối database
 sequelize.authenticate()
-  .then(() => console.log('Kết nối MySQL thành công'))
-  .catch(err => console.error('Lỗi kết nối MySQL:', err));
-//app.set('view engine', 'jade');
+  .then(() => console.log('✅ Kết nối MySQL thành công'))
+  .catch(err => console.error('❌ Lỗi kết nối MySQL:', err));
 
 app.use(logger('dev'));
 app.use(express.json());
@@ -48,14 +48,10 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-// Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-
-
-// Routes
-
+// ==================== ROUTES ====================
 app.use('/api/phong', phongRouter);
 app.use('/api/nguoiThue', nguoiThueRouter);
 app.use('/api/hopDong', hopDongRouter);
@@ -63,33 +59,30 @@ app.use('/api/taiKhoan', taiKhoanRouter);
 app.use('/api/hoaDon', hoaDonRouter);
 app.use('/api/thanhToan', thanhToanRouter);
 app.use('/api/baoCao', baoCaoRouter);
-app.use('/api/auth', authrouter);
+app.use('/api/auth', authRouter);
 app.use('/api/hinhAnh', hinhAnhRouter);
+app.use('/api/chatbot', chatbotRouter);
+app.use('/api/yeuCauThue', yeuCauThueRouter);
+app.use('/api/vietqr', vietQRRouter);
+app.use('/api/chuTro', chuTroRouter);
 
-
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
+// ==================== 404 HANDLER ====================
+app.use(function (req, res, next) {
   next(createError(404));
 });
 
-// error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-  // render the error page
+// ==================== ERROR HANDLER ====================
+app.use(function (err, req, res, next) {
   res.status(err.status || 500).json({
     success: false,
-    message: err.message
+    message: err.message || 'Lỗi server'
   });
-  
 });
 
-// Start the server
+// ==================== START SERVER ====================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+  console.log(`🚀 Server đang chạy tại http://localhost:${PORT}`);
 });
 
 export default app;

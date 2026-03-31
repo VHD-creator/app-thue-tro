@@ -1,65 +1,59 @@
 import cron from 'node-cron';
-import { Op } from 'sequelize';
-import HoaDon from '../models/HoaDon.js';
-import NguoiThue from '../models/NguoiThue.js';
-import { guiNhacNhoThanhToan, guiThongBaoQuaHan } from './emailService.js';
+import { HoaDon, HopDong, NguoiThue, Phong } from '../models/quanHe.js';
+import { guiNhacNhoThanhToan } from './emailService.js';
 
-// Chạy hàng ngày lúc 9:00 sáng
+// ✅ Chạy mỗi ngày lúc 9:00 sáng
 cron.schedule('0 9 * * *', async () => {
-  console.log('Kiểm tra hóa đơn cần nhắc nhở...');
-
-  const ngayHienTai = new Date();
-  const ngayMai = new Date(ngayHienTai);
-  ngayMai.setDate(ngayHienTai.getDate() + 1);
+  console.log('⏰ Kiểm tra hóa đơn chưa thanh toán...');
 
   try {
-    // Tìm hóa đơn đáo hạn ngày mai và chưa thanh toán
-    const hoaDonsSapDaoHan = await HoaDon.findAll({
-      where: {
-        dueDate: {
-          [Op.lte]: ngayMai,
-          [Op.gte]: ngayHienTai
-        },
-        status: 'pending'
-      },
-      include: [{ model: NguoiThue, as: 'NguoiThue' }]
+    // Lấy tất cả hóa đơn chưa thanh toán
+    const hoaDonsChuaThanhToan = await HoaDon.findAll({
+      where: { trang_thai: 0 },
+      include: [{
+        model: Phong,
+        as: 'Phong',
+        attributes: ['id_phong', 'ten_phong']
+      }]
     });
 
-    for (const hoaDon of hoaDonsSapDaoHan) {
-      await guiNhacNhoThanhToan(
-        hoaDon.NguoiThue.email,
-        hoaDon.NguoiThue.name,
-        hoaDon.amount,
-        hoaDon.dueDate
-      );
+    if (hoaDonsChuaThanhToan.length === 0) {
+      console.log('✅ Không có hóa đơn chưa thanh toán');
+      return;
     }
 
-    // Tìm hóa đơn đã quá hạn
-    const hoaDonsQuaHan = await HoaDon.findAll({
-      where: {
-        dueDate: {
-          [Op.lt]: ngayHienTai
-        },
-        status: 'pending'
-      },
-      include: [{ model: NguoiThue, as: 'NguoiThue' }]
-    });
+    console.log(`📋 Có ${hoaDonsChuaThanhToan.length} hóa đơn chưa thanh toán`);
 
-    for (const hoaDon of hoaDonsQuaHan) {
-      // Cập nhật trạng thái thành overdue
-      await HoaDon.update({ status: 'overdue' }, { where: { id: hoaDon.id } });
+    for (const hoaDon of hoaDonsChuaThanhToan) {
+      try {
+        // Tìm hợp đồng đang hoạt động của phòng → lấy người thuê
+        const hopDong = await HopDong.findOne({
+          where: { id_phong: hoaDon.id_phong, trang_thai: 1 },
+          include: [{
+            model: NguoiThue,
+            as: 'NguoiThue',
+            attributes: ['ho_ten', 'email']
+          }]
+        });
 
-      await guiThongBaoQuaHan(
-        hoaDon.NguoiThue.email,
-        hoaDon.NguoiThue.name,
-        hoaDon.amount
-      );
+        if (hopDong?.NguoiThue?.email) {
+          await guiNhacNhoThanhToan(
+            hopDong.NguoiThue.email,
+            hopDong.NguoiThue.ho_ten,
+            hoaDon.tong_tien,
+            hoaDon.thang_nam
+          );
+          console.log(`📧 Đã gửi nhắc nhở tới: ${hopDong.NguoiThue.email}`);
+        }
+      } catch (err) {
+        console.error(`❌ Lỗi gửi email hóa đơn ${hoaDon.id_hoa_don}:`, err.message);
+      }
     }
 
-    console.log('Hoàn thành kiểm tra hóa đơn');
+    console.log('✅ Hoàn thành kiểm tra hóa đơn');
   } catch (error) {
-    console.error('Lỗi trong scheduler:', error);
+    console.error('❌ Lỗi trong scheduler:', error.message);
   }
 });
 
-console.log('Scheduler đã được khởi động');
+console.log('⏰ Scheduler đã được khởi động');

@@ -1,139 +1,59 @@
-// Validation utilities for input validation
+// ==================== VALIDATORS ====================
+// Dùng chung cho tất cả routes
 
-// Validate email format
-export const validateEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+export const validatePrice = (value) => {
+  const num = parseFloat(value);
+  return !isNaN(num) && num > 0;
 };
 
-// Validate phone number (Vietnamese format)
-export const validatePhone = (phone) => {
-  const phoneRegex = /^(0|\+84)[0-9]{9,10}$/;
-  return phoneRegex.test(phone.replace(/[- .]/g, ''));
-};
+export const validateAmount = validatePrice;
 
-// Validate CCCD (12 digits)
-export const validateCCCD = (cccd) => {
-  return /^[0-9]{12}$/.test(cccd);
-};
-
-// Validate date format (DD-MM-YYYY)
-export const validateDate = (date) => {
-  const dateRegex = /^\d{2}-\d{2}-\d{4}$/;
-  if (!dateRegex.test(date)) return false;
-  
-  const [day, month, year] = date.split('-');
-  const d = new Date(`${year}-${month}-${day}`);
-  return d instanceof Date && !isNaN(d);
-};
-
-// Validate date is not in the past
-export const isDateNotInPast = (date) => {
-  const [day, month, year] = date.split('-');
-  const inputDate = new Date(`${year}-${month}-${day}`);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return inputDate >= today;
-};
-
-// Validate end date is after start date
-export const isEndDateAfterStartDate = (startDate, endDate) => {
-  const [startDay, startMonth, startYear] = startDate.split('-');
-  const [endDay, endMonth, endYear] = endDate.split('-');
-  
-  const start = new Date(`${startYear}-${startMonth}-${startDay}`);
-  const end = new Date(`${endYear}-${endMonth}-${endDay}`);
-  
-  return end > start;
-};
-
-// Validate amount is positive
-export const validateAmount = (amount) => {
-  return !isNaN(amount) && parseFloat(amount) > 0;
-};
-
-// Validate string length
 export const validateStringLength = (str, min = 1, max = 255) => {
-  return str && str.length >= min && str.length <= max;
+  if (typeof str !== 'string') return false;
+  return str.trim().length >= min && str.trim().length <= max;
 };
 
-// Validate username (alphanumeric, 4-20 chars)
-export const validateUsername = (username) => {
-  return /^[a-zA-Z0-9_]{4,20}$/.test(username);
+export const validateDate = (dateStr) => {
+  if (!dateStr) return false;
+  const regex = /^\d{2}-\d{2}-\d{4}$/;
+  if (!regex.test(dateStr)) return false;
+  const [d, m, y] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.getFullYear() === y &&
+         date.getMonth() === m - 1 &&
+         date.getDate() === d;
 };
 
-// Validate password (min 6 chars, at least 1 number, 1 letter)
-export const validatePassword = (password) => {
-  return /^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{6,}$/.test(password);
+export const validateMonthYear = (str) => {
+  if (!str) return false;
+  const regex = /^\d{2}-\d{4}$/;
+  if (!regex.test(str)) return false;
+  const [m, y] = str.split('-').map(Number);
+  return m >= 1 && m <= 12 && y >= 2000 && y <= 2100;
 };
 
-// Validate role
-export const validateRole = (role) => {
-  return ['ADMIN', 'CHU_TRO', 'NGUOI_THUE'].includes(role);
+export const isEndDateAfterStartDate = (startStr, endStr) => {
+  if (!validateDate(startStr) || !validateDate(endStr)) return false;
+  const toDate = (str) => {
+    const [d, m, y] = str.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+  return toDate(endStr) > toDate(startStr);
 };
 
-// Validate status
-export const validateStatus = (status) => {
-  return [0, 1].includes(parseInt(status));
-};
-
-// Validate bill status (0: unpaid, 1: paid, 2: debt)
 export const validateBillStatus = (status) => {
   return [0, 1, 2].includes(parseInt(status));
 };
 
-// Validate trang_thai for contracts
-export const validateContractStatus = (status) => {
-  return [0, 1].includes(parseInt(status));
+export const validateStatus = (status) => {
+  return [0, 1, 2].includes(parseInt(status));
 };
 
-// Validate price format (DECIMAL 12,2)
-export const validatePrice = (price) => {
-  const priceRegex = /^\d+(\.\d{1,2})?$/;
-  return priceRegex.test(price) && parseFloat(price) >= 0;
-};
-
-// Sanitize string input (remove special chars, trim)
-export const sanitizeString = (str) => {
-  if (typeof str !== 'string') return '';
-  return str.trim().replace(/[<>]/g, '');
-};
-
-// Validate month-year format (MM-YYYY)
-export const validateMonthYear = (monthYear) => {
-  const monthYearRegex = /^(0[1-9]|1[0-2])-\d{4}$/;
-  if (!monthYearRegex.test(monthYear)) return false;
-  
-  const [month, year] = monthYear.split('-');
-  const month_int = parseInt(month);
-  const year_int = parseInt(year);
-  
-  return month_int >= 1 && month_int <= 12 && year_int >= 2000 && year_int <= 2099;
-};
-
-// Validate payment method
+// ✅ Đúng theo file gốc của bạn — chỉ 2 method
 export const validatePaymentMethod = (method) => {
-  const validMethods = ['tiền mặt', 'chuyển khoản', 'thẻ tín dụng', 'ví điện tử'];
-  return validMethods.includes(method.toLowerCase());
-};
-
-export default {
-  validateEmail,
-  validatePhone,
-  validateCCCD,
-  validateDate,
-  isDateNotInPast,
-  isEndDateAfterStartDate,
-  validateAmount,
-  validateStringLength,
-  validateUsername,
-  validatePassword,
-  validateRole,
-  validateStatus,
-  validateBillStatus,
-  validateContractStatus,
-  validatePrice,
-  sanitizeString,
-  validateMonthYear,
-  validatePaymentMethod
+  const allowed = [
+    'tiền mặt',
+    'VietQR - Chuyển khoản'
+  ];
+  return allowed.includes(method);
 };

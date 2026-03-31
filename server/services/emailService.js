@@ -1,7 +1,4 @@
 import nodemailer from 'nodemailer';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -11,51 +8,54 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// Gửi email nhắc nhở thanh toán
-export const guiNhacNhoThanhToan = async (email, tenNguoiThue, soTien, ngayDaoHan) => {
+// ✅ Gửi email nhắc nhở thanh toán
+export const guiNhacNhoThanhToan = async (email, tenNguoiThue, soTien, thangNam) => {
+  if (!email) return;
+
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: 'Nhắc nhở thanh toán hóa đơn thuê phòng',
-    text: `Kính chào ${tenNguoiThue},
-
-Chúng tôi nhắc nhở bạn thanh toán hóa đơn thuê phòng với số tiền ${soTien} VND, đáo hạn vào ngày ${ngayDaoHan.toDateString()}.
-
-Vui lòng thanh toán đúng hạn để tránh phí phạt.
-
-Trân trọng,
-Đội ngũ Quản lý Cho thuê Phòng`
+    subject: `[Nhắc nhở] Thanh toán hóa đơn tháng ${thangNam}`,
+    html: `
+      <h3>Kính chào ${tenNguoiThue},</h3>
+      <p>Bạn có hóa đơn thuê phòng tháng <strong>${thangNam}</strong> chưa thanh toán.</p>
+      <p>Số tiền cần thanh toán: <strong>${Number(soTien).toLocaleString('vi-VN')} VNĐ</strong></p>
+      <p>Vui lòng thanh toán đúng hạn để tránh phát sinh thêm.</p>
+      <br/>
+      <p>Trân trọng,<br/>Đội ngũ Quản lý Phòng trọ</p>
+    `
   };
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log('Email nhắc nhở đã được gửi thành công');
+    console.log(`📧 Đã gửi email nhắc nhở tới ${email}`);
   } catch (error) {
-    console.error('Lỗi gửi email:', error);
+    console.error('❌ Lỗi gửi email nhắc nhở:', error.message);
   }
 };
 
-// Gửi email thông báo hóa đơn quá hạn
+// ✅ Gửi email thông báo hóa đơn quá hạn
 export const guiThongBaoQuaHan = async (email, tenNguoiThue, soTien) => {
+  if (!email) return;
+
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: 'Thông báo hóa đơn thuê phòng quá hạn',
-    text: `Kính chào ${tenNguoiThue},
-
-Hóa đơn thuê phòng của bạn với số tiền ${soTien} VND đã quá hạn thanh toán.
-
-Vui lòng thanh toán ngay để tránh các biện pháp xử lý thêm.
-
-Trân trọng,
-Đội ngũ Quản lý Cho thuê Phòng`
+    subject: '[Quan trọng] Hóa đơn thuê phòng đã quá hạn',
+    html: `
+      <h3>Kính chào ${tenNguoiThue},</h3>
+      <p>Hóa đơn thuê phòng của bạn với số tiền <strong>${Number(soTien).toLocaleString('vi-VN')} VNĐ</strong> đã <strong style="color:red">quá hạn thanh toán</strong>.</p>
+      <p>Vui lòng thanh toán ngay để tránh các biện pháp xử lý thêm.</p>
+      <br/>
+      <p>Trân trọng,<br/>Đội ngũ Quản lý Phòng trọ</p>
+    `
   };
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log('Email thông báo quá hạn đã được gửi thành công');
+    console.log(`📧 Đã gửi email quá hạn tới ${email}`);
   } catch (error) {
-    console.error('Lỗi gửi email:', error);
+    console.error('❌ Lỗi gửi email quá hạn:', error.message);
   }
 };
 
