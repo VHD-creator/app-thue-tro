@@ -31,7 +31,12 @@ fun PaymentScreen(
     LaunchedEffect(submitState) {
         when (submitState) {
             is PaymentSubmitState.Success -> {
-                Toast.makeText(context, "Thanh toán thành công!", Toast.LENGTH_SHORT).show()
+                val msg = if (selectedMethod == "tiền mặt") {
+                    "Đã gửi yêu cầu thanh toán tiền mặt. Chờ chủ trọ xác nhận."
+                } else {
+                    "Thanh toán thành công!"
+                }
+                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                 navController.popBackStack()
                 viewModel.resetState()
             }

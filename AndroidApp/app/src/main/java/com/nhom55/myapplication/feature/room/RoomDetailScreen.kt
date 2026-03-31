@@ -3,6 +3,8 @@ package com.nhom55.myapplication.feature.room
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
@@ -14,6 +16,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +25,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.nhom55.myapplication.feature.contract.ContractViewModel
@@ -33,6 +42,8 @@ import com.nhom55.myapplication.feature.invoice.InvoiceUiState
 import com.nhom55.myapplication.feature.invoice.InvoiceViewModel
 import com.nhom55.myapplication.navigation.User
 import com.nhom55.myapplication.core.session.SessionManager
+import com.nhom55.myapplication.core.network.RetrofitInstance
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,8 +58,15 @@ fun RoomDetailScreen(
     val invoiceState by invoiceViewModel.uiState.collectAsState()
     val createContractState by contractViewModel.createUiState.collectAsState()
     val currentUser by SessionManager.currentUser.collectAsState()
+    val roomImagesMap by viewModel.roomImages.collectAsState()
     val context = LocalContext.current
     var showBookingDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(roomId) {
+        if (roomId != null) {
+            viewModel.loadRoomImages(roomId)
+        }
+    }
 
     LaunchedEffect(createContractState) {
         if (createContractState is CreateContractUiState.Success) {
@@ -100,10 +118,12 @@ fun RoomDetailScreen(
                 }
                 is RoomUiState.Success -> {
                     if (room != null) {
+                        val currentRoomImages = roomImagesMap[roomId] ?: emptyList()
                         RoomDetailContent(
                             room = room,
                             currentUser = currentUser,
                             roomInvoices = roomInvoices,
+                            roomImages = currentRoomImages,
                             navController = navController,
                             onBookRoom = { showBookingDialog = true }
                         )
@@ -142,6 +162,7 @@ fun RoomDetailContent(
     room: Room,
     currentUser: User?,
     roomInvoices: List<Invoice>,
+    roomImages: List<HinhAnhPhong>,
     navController: NavHostController,
     onBookRoom: () -> Unit
 ) {
@@ -150,7 +171,8 @@ fun RoomDetailContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 4.dp),
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 4.dp)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(
@@ -168,6 +190,30 @@ fun RoomDetailContent(
 
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
+        // HÌNH ẢNH PHÒNG
+        Text("Hình ảnh phòng", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        if (roomImages.isEmpty()) {
+            Text("Chưa có hình ảnh", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(bottom = 8.dp))
+        } else {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().height(200.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 4.dp)
+            ) {
+                items(roomImages) { hinhAnh ->
+                    AsyncImage(
+                        model = hinhAnh.url,
+                        contentDescription = hinhAnh.description ?: hinhAnh.type,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .aspectRatio(4f / 3f)
+                            .clip(RoundedCornerShape(8.dp))
+                    )
+                }
+            }
+        }
+
         DetailItem(
             icon = Icons.Default.Info,
             label = "Giá thuê",
@@ -183,20 +229,8 @@ fun RoomDetailContent(
 
         DetailItem(
             icon = Icons.Default.Info,
-            label = "Diện tích",
-            value = "${room.area} m²"
-        )
-
-        DetailItem(
-            icon = Icons.Default.Info,
             label = "Mô tả",
             value = if (!room.description.isNullOrBlank()) room.description else "Trống"
-        )
-
-        DetailItem(
-            icon = Icons.Default.Person,
-            label = "Người đang thuê",
-            value = if (!room.tenantName.isNullOrBlank()) room.tenantName else "Chưa có người thuê"
         )
 
         Spacer(modifier = Modifier.weight(1f))
@@ -222,26 +256,34 @@ fun RoomDetailContent(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            if (currentUser?.role == "NGUOI_THUE") {
-                Text("Hóa đơn của phòng", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                
-                if (roomInvoices.isEmpty()) {
-                    Text("Không có hóa đơn nào", color = MaterialTheme.colorScheme.outline)
-                } else {
-                    roomInvoices.forEach { invoice ->
-                        InvoiceCard(
-                            invoice = invoice,
-                            onClick = {
-                                if (invoice.status == InvoiceStatus.UNPAID || invoice.status == InvoiceStatus.PARTIAL) {
-                                    navController.navigate("payment_form/${invoice.id}/${invoice.totalCost.toFloat()}")
+        } else {
+            var showDeleteDialog by remember { mutableStateOf(false) }
+            val scope = rememberCoroutineScope()
+            if (showDeleteDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = false },
+                    title = { Text("Xóa phòng") },
+                    text = { Text("Bạn có chắc chắn muốn xóa phòng này không? Các dữ liệu liên quan sẽ bị xóa và không thể hoàn tác.") },
+                    confirmButton = {
+                        Button(onClick = {
+                            showDeleteDialog = false
+                            scope.launch {
+                                try {
+                                    RetrofitInstance.api.deleteRoom(room.id.toInt())
+                                    Toast.makeText(context, "Xóa phòng thành công", Toast.LENGTH_SHORT).show()
+                                    navController.popBackStack()
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Lỗi khi xóa: ${e.message}", Toast.LENGTH_SHORT).show()
                                 }
                             }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        }) { Text("Xóa phòng") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteDialog = false }) { Text("Hủy") }
                     }
-                }
+                )
             }
-        } else {
+
             Text("Thao tác quản lý", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
             
@@ -250,39 +292,28 @@ fun RoomDetailContent(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
-                    onClick = { /* TODO: Sửa thông tin */ },
+                    onClick = { navController.navigate("create_edit_room/${room.id}") },
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("Sửa phòng")
                 }
-                
-                if (room.status == RoomStatus.OCCUPIED) {
-                    Button(
-                        onClick = { /* TODO: Tạo hóa đơn */ },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                    ) {
-                        Text("Ghi điện nước")
-                    }
-                } else if (room.status == RoomStatus.AVAILABLE) {
-                    Button(
-                        onClick = { /* TODO: Gán khách ngoài */ },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                    ) {
-                        Text("Gán khách")
-                    }
+
+                OutlinedButton(
+                    onClick = { showDeleteDialog = true },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Xóa phòng")
                 }
             }
             
-            if (room.status == RoomStatus.OCCUPIED) {
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = { /* TODO: Báo trả phòng */ },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            if (room.status == RoomStatus.AVAILABLE) {
+                Button(
+                    onClick = { /* TODO: Gán khách ngoài */ },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                 ) {
-                    Text("Khách trả phòng (Kết thúc HĐ)")
+                    Text("Gán khách")
                 }
             }
         }

@@ -1,18 +1,23 @@
 package com.nhom55.myapplication.feature.invoice
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.nhom55.myapplication.core.network.RetrofitInstance
+import com.nhom55.myapplication.core.session.SessionManager
 import com.nhom55.myapplication.feature.room.formatPrice
 import com.nhom55.myapplication.feature.tenant.DetailRow
 import kotlinx.coroutines.Dispatchers
@@ -22,11 +27,18 @@ import kotlinx.coroutines.withContext
 @Composable
 fun InvoiceDetailScreen(
     invoiceId: Int,
-    navController: NavHostController
+    navController: NavHostController,
+    viewModel: InvoiceViewModel = viewModel()
 ) {
     var invoice by remember { mutableStateOf<Invoice?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showConfirmDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val isOperating by viewModel.isOperating.collectAsState()
+    val currentUser by SessionManager.currentUser.collectAsState()
+    val isAdminOrChuTro = currentUser?.role == "ADMIN" || currentUser?.role == "CHU_TRO"
 
     LaunchedEffect(invoiceId) {
         try {
@@ -41,8 +53,74 @@ fun InvoiceDetailScreen(
         }
     }
 
+    // Delete dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Xác nhận xóa") },
+            text = { Text("Bạn có chắc muốn xóa hóa đơn này? Hành động không thể hoàn tác.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        viewModel.deleteInvoice(
+                            id = invoiceId,
+                            onSuccess = {
+                                Toast.makeText(context, "Đã xóa hóa đơn", Toast.LENGTH_SHORT).show()
+                                navController.navigateUp()
+                            },
+                            onError = { msg ->
+                                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                            }
+                        )
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Xóa")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
+
+    // Confirm dialog
+    if (showConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDialog = false },
+            title = { Text("Xác nhận thu tiền") },
+            text = { Text("Bạn có chắc chắn đã nhận đủ tiền mặt cho hóa đơn này không? Trạng thái sẽ được chuyển thành 'Đã thu'.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showConfirmDialog = false
+                        viewModel.confirmPayment(
+                            id = invoiceId,
+                            onSuccess = {
+                                Toast.makeText(context, "Đã xác nhận thu tiền", Toast.LENGTH_SHORT).show()
+                            },
+                            onError = { msg ->
+                                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                            }
+                        )
+                    }
+                ) {
+                    Text("Xác nhận")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
-        // Header
+        // ... (Header and scrollable content are inside the main Box below)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -56,12 +134,25 @@ fun InvoiceDetailScreen(
             Text(
                 text = "Chi tiết hóa đơn",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
             )
+            if (invoice != null && isAdminOrChuTro) {
+                IconButton(
+                    onClick = { showDeleteDialog = true },
+                    enabled = !isOperating
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Xóa",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         }
 
         Box(modifier = Modifier.fillMaxSize()) {
-            if (isLoading) {
+            if (isLoading || isOperating) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else {
                 val currentInvoice = invoice
@@ -146,17 +237,36 @@ fun InvoiceDetailScreen(
                             }
                         }
 
-                        // Pay button for unpaid invoices
-                        if (currentInvoice.status != InvoiceStatus.PAID) {
-                            Button(
-                                onClick = {
-                                    navController.navigate(
-                                        "payment_form/${currentInvoice.id}/${currentInvoice.totalCost.toFloat()}"
-                                    )
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Thanh toán")
+                        // Action buttons based on role and status
+                        if (isAdminOrChuTro) {
+                            if (currentInvoice.status == InvoiceStatus.PENDING) {
+                                Button(
+                                    onClick = { showConfirmDialog = true },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Xác nhận thu tiền")
+                                }
+                            }
+                        } else {
+                            if (currentInvoice.status == InvoiceStatus.UNPAID) {
+                                Button(
+                                    onClick = {
+                                        navController.navigate(
+                                            "payment_form/${currentInvoice.id}/${currentInvoice.totalCost.toFloat()}"
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Thanh toán")
+                                }
+                            } else if (currentInvoice.status == InvoiceStatus.PENDING) {
+                                OutlinedButton(
+                                    onClick = { },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = false
+                                ) {
+                                    Text("Đang chờ duyệt tiền mặt")
+                                }
                             }
                         }
                     }

@@ -142,9 +142,24 @@ router.get('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
 // GET /api/nguoiThue/:id_nguoi_thue - Chi tiết (PHẢI đặt SAU các route cụ thể)
 router.get('/:id_nguoi_thue', verifyToken, requireAuthenticated, async (req, res) => {
   try {
-    const tenant = await NguoiThue.findByPk(req.params.id_nguoi_thue);
-    if (!tenant) return res.status(404).json({ error: 'Người thuê không tồn tại' });
+    const HopDong = (await import('../models/HopDong.js')).default;
+    const tenant = await NguoiThue.findByPk(req.params.id_nguoi_thue, {
+      include: [
+        {
+          model: HopDong,
+          as: 'DanhSachHopDong',
+          where: { trang_thai: 1 },
+          attributes: ['id_hop_dong', 'id_phong', 'ngay_bat_dau', 'ngay_ket_thuc'],
+          required: false
+        }
+      ]
+    });
+    
+    if (!tenant) {
+      return res.status(404).json({ error: 'Người thuê không tồn tại' });
+    }
 
+    // Người thuê chỉ xem được thông tin của mình
     if (req.userRole === 'NGUOI_THUE') {
       const selfTenant = await NguoiThue.findOne({ where: { id_tai_khoan: req.userId } });
       if (!selfTenant || selfTenant.id_nguoi_thue !== tenant.id_nguoi_thue) {
@@ -161,7 +176,7 @@ router.get('/:id_nguoi_thue', verifyToken, requireAuthenticated, async (req, res
 // POST /api/nguoiThue
 router.post('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
   try {
-    const { ho_ten, cccd, so_dien_thoai, email, ngay_vao, ngay_ra, id_tai_khoan } = req.body;
+    const { ho_ten, cccd, so_dien_thoai, email, id_tai_khoan } = req.body;
 
     if (!ho_ten || !cccd) return res.status(400).json({ error: 'Thiếu dữ liệu: ho_ten, cccd' });
     if (!/^\d{12}$/.test(cccd)) return res.status(400).json({ error: 'CCCD phải là 12 chữ số' });
@@ -169,8 +184,18 @@ router.post('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
     const existingTenant = await NguoiThue.findOne({ where: { cccd } });
     if (existingTenant) return res.status(400).json({ error: 'CCCD đã tồn tại trong hệ thống' });
 
-    const tenant = await NguoiThue.create({ ho_ten, cccd, so_dien_thoai, email, ngay_vao, ngay_ra, id_tai_khoan });
-    res.status(201).json({ message: 'Tạo người thuê thành công', data: tenant });
+    const tenant = await NguoiThue.create({
+      ho_ten,
+      cccd,
+      so_dien_thoai,
+      email,
+      id_tai_khoan
+    });
+
+    res.status(201).json({
+      message: 'Tạo người thuê thành công',
+      data: tenant
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -182,7 +207,7 @@ router.put('/:id_nguoi_thue', verifyToken, requireChuTroOrAdmin, async (req, res
     const tenant = await NguoiThue.findByPk(req.params.id_nguoi_thue);
     if (!tenant) return res.status(404).json({ error: 'Người thuê không tồn tại' });
 
-    const { ho_ten, cccd, so_dien_thoai, email, ngay_vao, ngay_ra } = req.body;
+    const { ho_ten, cccd, so_dien_thoai, email } = req.body;
 
     if (cccd && cccd !== tenant.cccd) {
       if (!/^\d{12}$/.test(cccd)) return res.status(400).json({ error: 'CCCD phải là 12 chữ số' });
@@ -194,8 +219,6 @@ router.put('/:id_nguoi_thue', verifyToken, requireChuTroOrAdmin, async (req, res
     if (ho_ten) tenant.ho_ten = ho_ten;
     if (so_dien_thoai) tenant.so_dien_thoai = so_dien_thoai;
     if (email) tenant.email = email;
-    if (ngay_vao) tenant.ngay_vao = ngay_vao;
-    if (ngay_ra) tenant.ngay_ra = ngay_ra;
 
     await tenant.save();
     res.json({ message: 'Cập nhật người thuê thành công', data: tenant });

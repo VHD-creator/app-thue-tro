@@ -69,6 +69,7 @@ router.post('/phong/:id_phong',
       const { loai_hinh, la_anh_dai_dien, mo_ta, thu_tu } = req.body;
 
       if (!req.file) {
+        console.log("lỗi 2");
         return res.status(400).json({ error: 'Vui lòng chọn file ảnh' });
       }
 
@@ -119,6 +120,7 @@ router.post('/phong/:id_phong/multiple',
       const { id_phong } = req.params;
 
       if (!req.files || req.files.length === 0) {
+        console.log("lỗi 1");
         return res.status(400).json({ error: 'Vui lòng chọn ít nhất 1 file ảnh' });
       }
 

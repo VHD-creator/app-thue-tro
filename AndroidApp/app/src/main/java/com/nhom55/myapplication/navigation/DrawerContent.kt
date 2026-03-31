@@ -131,16 +131,7 @@ fun DrawerContent(
                 }
             )
 
-            DrawerMenuItem(
-                icon = Icons.Default.Check,
-                title = "Thanh toán",
-                onClick = {
-                    navController.navigate(Screen.Payments.route) {
-                        launchSingleTop = true
-                    }
-                    onCloseDrawer()
-                }
-            )
+
 
             DrawerMenuItem(
                 icon = Icons.Default.Info,

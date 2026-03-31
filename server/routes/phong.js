@@ -5,7 +5,8 @@ import { Phong, ChuTro, HoaDon, HopDong, NguoiThue, TaiKhoan } from '../models/q
 import { 
   verifyToken,
   requireChuTroOrAdmin, 
-  checkPhongOwnership
+  checkPhongOwnership,
+  optionalAuth
 } from '../middlewares/auth.js';
 import { validatePrice, validateStringLength } from '../utils/validators.js';
 
@@ -64,6 +65,44 @@ router.get('/search', async (req, res) => {
   }
 });
 
+// GET /api/phong/cua-toi - Lấy phòng hiện tại của người thuê
+router.get('/cua-toi', verifyToken, async (req, res) => {
+  try {
+    if (req.userRole !== 'NGUOI_THUE') {
+      return res.status(403).json({ error: 'Chỉ người thuê mới sử dụng API này' });
+    }
+    
+    // Tìm ID người thuê
+    const NguoiThue = (await import('../models/NguoiThue.js')).default;
+    const nguoiThue = await NguoiThue.findOne({ where: { id_tai_khoan: req.userId } });
+    
+    if (!nguoiThue) {
+      return res.status(404).json({ error: 'Không tìm thấy hồ sơ người thuê' });
+    }
+
+    // Tìm hợp đồng đang active
+    const HopDong = (await import('../models/HopDong.js')).default;
+    const activeContract = await HopDong.findOne({
+      where: { id_nguoi_thue: nguoiThue.id_nguoi_thue, trang_thai: 1 }
+    });
+
+    if (!activeContract) {
+      return res.status(404).json({ error: 'Bạn chưa thuê phòng nào' });
+    }
+
+    // Lấy thông tin phòng
+    const room = await Phong.findByPk(activeContract.id_phong);
+    res.json(room);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+<<<<<<< HEAD
 // GET /api/phong - Danh sách tất cả phòng
 router.get('/', async (req, res) => {
   try {
@@ -82,6 +121,24 @@ router.get('/', async (req, res) => {
         }
       } catch (err) {
         // Token không hợp lệ, trả về tất cả
+=======
+import { optionalAuth } from '../middlewares/auth.js';
+
+// GET /api/phong - Danh sách tất cả phòng
+// - Public: xem tất cả
+// - Chủ trọ (nếu có token): chỉ xem phòng của mình
+// - Admin: xem tất cả
+router.get('/', optionalAuth, async (req, res) => {
+  try {
+    let whereCondition = {};
+    
+    if (req.userRole === 'CHU_TRO') {
+      const chuTro = await ChuTro.findOne({ 
+        where: { id_tai_khoan: req.userId } 
+      });
+      if (chuTro) {
+        whereCondition.id_chu_tro = chuTro.id_chu_tro;
+>>>>>>> 669a98d4a4db815581c01b2f71c44dd6d52e04ef
       }
     }
     
@@ -231,8 +288,31 @@ router.delete('/:id_phong', verifyToken, requireChuTroOrAdmin, checkPhongOwnersh
       return res.status(400).json({ error: 'Không thể xóa phòng đang cho thuê' });
     }
 
-    if (room.trang_thai === 2) {
-      return res.status(400).json({ error: 'Không thể xóa phòng đang có yêu cầu chờ duyệt' });
+    // Xóa các dữ liệu liên kết để tránh lỗi Foreign Key Constraint
+    try {
+      const AnhPhong = (await import('../models/HinhAnhPhong.js')).default;
+      await AnhPhong.destroy({ where: { id_phong: req.params.id_phong } });
+
+      const HoaDon = (await import('../models/HoaDon.js')).default;
+      const ThanhToan = (await import('../models/ThanhToan.js')).default;
+      
+      // Lấy danh sách hóa đơn của phòng
+      const hoaDons = await HoaDon.findAll({ where: { id_phong: req.params.id_phong } });
+      const idHoaDons = hoaDons.map(hd => hd.id_hoa_don);
+      
+      if (idHoaDons.length > 0) {
+        // Xóa thanh toán của các hóa đơn này trước
+        await ThanhToan.destroy({ where: { id_hoa_don: idHoaDons } });
+        // Sau đó xóa hóa đơn
+        await HoaDon.destroy({ where: { id_phong: req.params.id_phong } });
+      }
+
+      const HopDong = (await import('../models/HopDong.js')).default;
+      await HopDong.destroy({ where: { id_phong: req.params.id_phong } });
+    } catch (err) {
+      console.error("Lỗi xóa dữ liệu liên kết:", err);
+      // Tiếp tục để thử xóa phòng, mặc dù có thể sẽ lỗi nếu chưa xóa hết FK
+    }
     }
 
     await room.destroy();

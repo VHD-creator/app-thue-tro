@@ -27,6 +27,10 @@ fun InvoiceListScreen(
     val currentUser by SessionManager.currentUser.collectAsState()
     val isAdminOrChuTro = currentUser?.role == "ADMIN" || currentUser?.role == "CHU_TRO"
 
+    LaunchedEffect(Unit) {
+        viewModel.loadInvoices()
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             Text(
@@ -151,7 +155,7 @@ fun InvoiceStatusChip(status: InvoiceStatus) {
     val (backgroundColor, textColor, text) = when (status) {
         InvoiceStatus.PAID -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), "Đã thu")
         InvoiceStatus.UNPAID -> Triple(Color(0xFFFFEBEE), Color(0xFFC62828), "Chưa thu")
-        InvoiceStatus.PARTIAL -> Triple(Color(0xFFFFF8E1), Color(0xFFEF6C00), "Thiếu")
+        InvoiceStatus.PENDING -> Triple(Color(0xFFFFF8E1), Color(0xFFEF6C00), "Chờ xác nhận")
     }
 
     Surface(

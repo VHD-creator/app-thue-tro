@@ -1,9 +1,7 @@
 package com.nhom55.myapplication.feature.contract
 
-import retrofit2.http.GET
-import retrofit2.http.Path
-import retrofit2.http.POST
-import retrofit2.http.Body
+import retrofit2.Response
+import retrofit2.http.*
 
 interface ContractApiService {
     @GET("api/hopDong")
@@ -14,4 +12,10 @@ interface ContractApiService {
 
     @POST("api/hopDong")
     suspend fun createContract(@Body request: ContractRequest): ContractResponse
+
+    @PUT("api/hopDong/{id}")
+    suspend fun updateContract(@Path("id") id: Int, @Body body: Map<String, Any?>): Response<Map<String, Any>>
+
+    @DELETE("api/hopDong/{id}")
+    suspend fun deleteContract(@Path("id") id: Int): Response<Map<String, Any>>
 }

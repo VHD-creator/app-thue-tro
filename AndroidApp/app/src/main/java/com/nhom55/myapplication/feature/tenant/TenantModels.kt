@@ -1,14 +1,22 @@
 package com.nhom55.myapplication.feature.tenant
 
+import com.google.gson.annotations.SerializedName
+
+data class HopDongShortApiModel(
+    @SerializedName("id_hop_dong") val id_hop_dong: Int,
+    @SerializedName("id_phong") val id_phong: Int,
+    @SerializedName("ngay_bat_dau") val ngay_bat_dau: String,
+    @SerializedName("ngay_ket_thuc") val ngay_ket_thuc: String
+)
+
 data class TenantApiModel(
-    val id_nguoi_thue: Int,
-    val ho_ten: String,
-    val cccd: String?,
-    val so_dien_thoai: String?,
-    val email: String?,
-    val ngay_vao: String?,
-    val ngay_ra: String?,
-    val id_tai_khoan: Int?
+    @SerializedName("id_nguoi_thue") val id_nguoi_thue: Int,
+    @SerializedName("ho_ten") val ho_ten: String,
+    @SerializedName("cccd") val cccd: String?,
+    @SerializedName("so_dien_thoai") val so_dien_thoai: String?,
+    @SerializedName("email") val email: String?,
+    @SerializedName("DanhSachHopDong") val DanhSachHopDong: List<HopDongShortApiModel>?,
+    @SerializedName("id_tai_khoan") val id_tai_khoan: Int?
 )
 
 data class Tenant(
@@ -28,8 +36,8 @@ fun TenantApiModel.toTenant(): Tenant {
         identityCard = cccd,
         phone = so_dien_thoai,
         email = email,
-        moveInDate = ngay_vao,
-        moveOutDate = ngay_ra
+        moveInDate = com.nhom55.myapplication.core.utils.DateFormatter.formatDateOnly(DanhSachHopDong?.firstOrNull()?.ngay_bat_dau),
+        moveOutDate = com.nhom55.myapplication.core.utils.DateFormatter.formatDateOnly(DanhSachHopDong?.firstOrNull()?.ngay_ket_thuc)
     )
 }
 
