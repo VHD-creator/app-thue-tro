@@ -8,6 +8,7 @@ export const validatePrice = (value) => {
 
 export const validateAmount = validatePrice;
 
+// Validate CCCD (12 digits)
 export const validateStringLength = (str, min = 1, max = 255) => {
   if (typeof str !== 'string') return false;
   return str.trim().length >= min && str.trim().length <= max;

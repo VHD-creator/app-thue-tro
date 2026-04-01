@@ -122,11 +122,15 @@ router.post('/', verifyToken, requireAuthenticated, async (req, res) => {
       ngay_thanh_toan: new Date()
     });
 
-    // Auto-update bill status to paid (trang_thai = 1)
-    await hoaDon.update({ trang_thai: 1 });
+    // Update bill status
+    // If cash, set to PENDING (2), otherwise set to PAID (1)
+    const newStatus = hinh_thuc === 'tiền mặt' ? 2 : 1;
+    await hoaDon.update({ trang_thai: newStatus });
 
     res.status(201).json({
-      message: 'Ghi nhận thanh toán thành công',
+      message: hinh_thuc === 'tiền mặt' 
+        ? 'Ghi nhận yêu cầu thanh toán tiền mặt thành công. Chờ chủ trọ xác nhận.' 
+        : 'Ghi nhận thanh toán thành công',
       data: thanhToan
     });
   } catch (error) {

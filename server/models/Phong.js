@@ -26,7 +26,7 @@ const Phong = sequelize.define('Phong', {
   trang_thai: {
     type: DataTypes.INTEGER,
     defaultValue: 0,
-    comment: '0: Còn trống, 1: Đang thuê, 2: Chờ duyệt'
+    comment: '0: Trống, 1: Đang thuê, 2: Chờ thanh toán, 3: Đang sửa chữa, 4: Hết hợp đồng'
   },
   mo_ta: {
     type: DataTypes.TEXT

@@ -36,7 +36,11 @@ const HopDong = sequelize.define('HopDong', {
   trang_thai: {
     type: DataTypes.INTEGER,
     defaultValue: 1,
-    comment: '1: Còn hiệu lực, 0: Hết hạn'
+    comment: '1: Còn hiệu lực, 0: Hết hạn, 2: Chờ cọc/thanh toán'
+  },
+  ngay_tao: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
   }
 }, {
   tableName: 'hop_dong',

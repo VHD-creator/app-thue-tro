@@ -50,7 +50,9 @@ fun RoomApiModel.toRoom(): Room {
         status = when (trang_thai) {
             "0" -> RoomStatus.AVAILABLE
             "1" -> RoomStatus.OCCUPIED
-            "2" -> RoomStatus.MAINTENANCE
+            "2" -> RoomStatus.PENDING
+            "3" -> RoomStatus.MAINTENANCE
+            "4" -> RoomStatus.CONTRACT_ENDED
             else -> RoomStatus.AVAILABLE
         },
         description = mo_ta,

@@ -97,37 +97,8 @@ router.get('/cua-toi', verifyToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-<<<<<<< HEAD
-// GET /api/phong - Danh sách tất cả phòng
-router.get('/', async (req, res) => {
-  try {
-    let whereCondition = {};
-    
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.substring(7);
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const taiKhoan = await TaiKhoan.findByPk(decoded.id);
-        
-        if (taiKhoan?.vai_tro === 'CHU_TRO') {
-          const chuTro = await ChuTro.findOne({ where: { id_tai_khoan: taiKhoan.id_tai_khoan } });
-          if (chuTro) whereCondition.id_chu_tro = chuTro.id_chu_tro;
-        }
-      } catch (err) {
-        // Token không hợp lệ, trả về tất cả
-=======
-import { optionalAuth } from '../middlewares/auth.js';
 
 // GET /api/phong - Danh sách tất cả phòng
-// - Public: xem tất cả
-// - Chủ trọ (nếu có token): chỉ xem phòng của mình
-// - Admin: xem tất cả
 router.get('/', optionalAuth, async (req, res) => {
   try {
     let whereCondition = {};
@@ -138,7 +109,6 @@ router.get('/', optionalAuth, async (req, res) => {
       });
       if (chuTro) {
         whereCondition.id_chu_tro = chuTro.id_chu_tro;
->>>>>>> 669a98d4a4db815581c01b2f71c44dd6d52e04ef
       }
     }
     
@@ -310,9 +280,7 @@ router.delete('/:id_phong', verifyToken, requireChuTroOrAdmin, checkPhongOwnersh
       const HopDong = (await import('../models/HopDong.js')).default;
       await HopDong.destroy({ where: { id_phong: req.params.id_phong } });
     } catch (err) {
-      console.error("Lỗi xóa dữ liệu liên kết:", err);
-      // Tiếp tục để thử xóa phòng, mặc dù có thể sẽ lỗi nếu chưa xóa hết FK
-    }
+      // Bỏ qua lỗi xóa dữ liệu liên kết, cho phép phòng tự được xóa
     }
 
     await room.destroy();

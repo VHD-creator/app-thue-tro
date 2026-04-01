@@ -23,10 +23,19 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateInvoiceScreen(navController: NavHostController) {
+fun CreateEditInvoiceScreen(
+    invoiceId: Int?,
+    navController: NavHostController,
+    viewModel: InvoiceViewModel = viewModel()
+) {
+    val isEditing = invoiceId != null && invoiceId != 0
+    val context = LocalContext.current
     val currentMonthYear = remember {
         SimpleDateFormat("MM-yyyy", Locale.getDefault()).format(Date())
     }
@@ -35,6 +44,7 @@ fun CreateInvoiceScreen(navController: NavHostController) {
     var expanded by remember { mutableStateOf(false) }
     var availableRooms by remember { mutableStateOf<List<RoomApiModel>>(emptyList()) }
 
+    var monthYear by remember { mutableStateOf(currentMonthYear) }
     var soDienCu by remember { mutableStateOf("") }
     var soDienMoi by remember { mutableStateOf("") }
     var soNuocCu by remember { mutableStateOf("") }
@@ -61,34 +71,62 @@ fun CreateInvoiceScreen(navController: NavHostController) {
         derivedStateOf { calculatedTienDien + calculatedTienNuoc + calculatedTienPhong }
     }
 
-    var isLoading by remember { mutableStateOf(false) }
+    val isOperating by viewModel.isOperating.collectAsState()
+    val createUiState by viewModel.createUiState.collectAsState()
     var isFetchingData by remember { mutableStateOf(true) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
-    var successMsg by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(invoiceId) {
         try {
-            // Fetch rooms and invoices to filter
-            val roomsTask = withContext(Dispatchers.IO) { RetrofitInstance.api.getRooms() }
-            val invoicesTask = withContext(Dispatchers.IO) { RetrofitInstance.invoiceApi.getInvoices() }
-            
-            // Only keep rooms that are occupied (trang_thai == "1")
-            val occupiedRooms = roomsTask.filter { it.trang_thai == "1" }
-            
-            // Find rooms that ALREADY have an invoice this month
-            val roomsWithInvoiceThisMonth = invoicesTask
-                .filter { it.thang_nam == currentMonthYear }
-                .map { it.id_phong }
+            if (isEditing) {
+                // Load existing invoice
+                val inv = withContext(Dispatchers.IO) {
+                    RetrofitInstance.invoiceApi.getInvoiceById(invoiceId!!)
+                }
+                monthYear = inv.thang_nam
+                soDienCu = inv.so_dien_cu.toString()
+                soDienMoi = inv.so_dien_moi.toString()
+                soNuocCu = inv.so_nuoc_cu.toString()
+                soNuocMoi = inv.so_nuoc_moi.toString()
                 
-            // Filter out those rooms
-            availableRooms = occupiedRooms.filter { it.id_phong !in roomsWithInvoiceThisMonth }
-            
+                // Hack to show the room as selected even if we don't fetch all rooms yet
+                selectedRoom = RoomApiModel(
+                    id_phong = inv.id_phong,
+                    id_chu_tro = 0, // Placeholder
+                    ten_phong = "Phòng ${inv.id_phong}",
+                    gia_phong = inv.tien_phong.toLong(),
+                    trang_thai = "1",
+                    mo_ta = null
+                )
+            } else {
+                // Fetch rooms for creation
+                val roomsTask = withContext(Dispatchers.IO) { RetrofitInstance.api.getRooms() }
+                val invoicesTask = withContext(Dispatchers.IO) { RetrofitInstance.invoiceApi.getInvoices() }
+                
+                val occupiedRooms = roomsTask.filter { it.trang_thai == "1" }
+                val roomsWithInvoiceThisMonth = invoicesTask
+                    .filter { it.thang_nam == currentMonthYear }
+                    .map { it.id_phong }
+                    
+                availableRooms = occupiedRooms.filter { it.id_phong !in roomsWithInvoiceThisMonth }
+            }
         } catch (e: Exception) {
-            errorMsg = "Không thể tải danh sách phòng: ${e.message}"
+            errorMsg = "Lỗi khi tải dữ liệu: ${e.message}"
         } finally {
             isFetchingData = false
+        }
+    }
+
+    LaunchedEffect(createUiState) {
+        if (createUiState is CreateInvoiceUiState.Success) {
+            Toast.makeText(context, "Thành công!", Toast.LENGTH_SHORT).show()
+            navController.navigateUp()
+            viewModel.resetCreateState()
+        } else if (createUiState is CreateInvoiceUiState.Error) {
+            errorMsg = (createUiState as CreateInvoiceUiState.Error).message
+            viewModel.resetCreateState()
         }
     }
 
@@ -105,7 +143,7 @@ fun CreateInvoiceScreen(navController: NavHostController) {
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Tạo hóa đơn mới",
+                text = if (isEditing) "Chỉnh sửa hóa đơn" else "Tạo hóa đơn mới",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -123,49 +161,60 @@ fun CreateInvoiceScreen(navController: NavHostController) {
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
+                if (isEditing) {
                     OutlinedTextField(
-                        value = selectedRoom?.ten_phong ?: "Chọn phòng",
+                        value = selectedRoom?.ten_phong ?: "Phòng",
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Phòng") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor()
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = false
                     )
-                    ExposedDropdownMenu(
+                } else {
+                    ExposedDropdownMenuBox(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false }
+                        onExpandedChange = { expanded = !expanded }
                     ) {
-                        if (availableRooms.isEmpty()) {
-                            DropdownMenuItem(
-                                text = { Text("Không có phòng trống nào cần tạo hóa đơn") },
-                                onClick = { expanded = false }
-                            )
-                        } else {
-                            availableRooms.forEach { room ->
+                        OutlinedTextField(
+                            value = selectedRoom?.ten_phong ?: "Chọn phòng",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Phòng") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            if (availableRooms.isEmpty()) {
                                 DropdownMenuItem(
-                                    text = { Text("Phòng ${room.ten_phong}") },
-                                    onClick = {
-                                        selectedRoom = room
-                                        expanded = false
-                                    }
+                                    text = { Text("Không có phòng trống nào cần tạo hóa đơn") },
+                                    onClick = { expanded = false }
                                 )
+                            } else {
+                                availableRooms.forEach { room ->
+                                    DropdownMenuItem(
+                                        text = { Text("Phòng ${room.ten_phong}") },
+                                        onClick = {
+                                            selectedRoom = room
+                                            expanded = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
                 }
 
                 OutlinedTextField(
-                    value = currentMonthYear,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Tháng/Năm (Tự động)") },
+                    value = monthYear,
+                    onValueChange = { if (!isEditing) monthYear = it },
+                    readOnly = isEditing,
+                    label = { Text(if (isEditing) "Tháng/Năm" else "Tháng/Năm (Tự động)") },
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -259,61 +308,54 @@ fun CreateInvoiceScreen(navController: NavHostController) {
                 )
             }
 
-            if (successMsg != null) {
-                Text(
-                    text = successMsg!!,
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
 
             Button(
                 onClick = {
                     errorMsg = null
-                    successMsg = null
 
                     if (selectedRoom == null) {
                         errorMsg = "Vui lòng chọn phòng"
                         return@Button
                     }
 
-                    isLoading = true
-                    scope.launch {
-                        try {
-                            val body = mapOf(
-                                "id_phong" to selectedRoom!!.id_phong,
-                                "thang_nam" to currentMonthYear,
-                                "so_dien_cu" to (soDienCu.toIntOrNull() ?: 0),
-                                "so_dien_moi" to (soDienMoi.toIntOrNull() ?: 0),
-                                "so_nuoc_cu" to (soNuocCu.toIntOrNull() ?: 0),
-                                "so_nuoc_moi" to (soNuocMoi.toIntOrNull() ?: 0),
-                                "tien_dien" to calculatedTienDien.toDouble(),
-                                "tien_nuoc" to calculatedTienNuoc.toDouble(),
-                                "tien_phong" to calculatedTienPhong.toDouble(),
-                                "trang_thai" to 0
-                            )
-                            withContext(Dispatchers.IO) {
-                                RetrofitInstance.invoiceApi.createInvoice(body)
-                            }
-                            successMsg = "Tạo hóa đơn thành công!"
-                        } catch (e: Exception) {
-                            errorMsg = e.message ?: "Lỗi khi tạo hóa đơn"
-                        } finally {
-                            isLoading = false
-                        }
+                    val body = mapOf(
+                        "id_phong" to selectedRoom!!.id_phong,
+                        "thang_nam" to monthYear,
+                        "so_dien_cu" to (soDienCu.toIntOrNull() ?: 0),
+                        "so_dien_moi" to (soDienMoi.toIntOrNull() ?: 0),
+                        "so_nuoc_cu" to (soNuocCu.toIntOrNull() ?: 0),
+                        "so_nuoc_moi" to (soNuocMoi.toIntOrNull() ?: 0),
+                        "tien_dien" to calculatedTienDien.toDouble(),
+                        "tien_nuoc" to calculatedTienNuoc.toDouble(),
+                        "tien_phong" to calculatedTienPhong.toDouble()
+                    )
+
+                    if (isEditing) {
+                        viewModel.updateInvoice(
+                            id = invoiceId!!,
+                            body = body,
+                            onSuccess = {
+                                Toast.makeText(context, "Cập nhật thành công!", Toast.LENGTH_SHORT).show()
+                                navController.navigateUp()
+                            },
+                            onError = { msg -> errorMsg = msg }
+                        )
+                    } else {
+                        val createBody = body.toMutableMap()
+                        createBody["trang_thai"] = 0
+                        viewModel.createInvoice(createBody)
                     }
                 },
-                enabled = !isLoading,
+                enabled = !isOperating && createUiState !is CreateInvoiceUiState.Loading,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                if (isLoading) {
+                if (isOperating || createUiState is CreateInvoiceUiState.Loading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Tạo hóa đơn")
+                    Text(if (isEditing) "Cập nhật hóa đơn" else "Tạo hóa đơn")
                 }
             }
             }

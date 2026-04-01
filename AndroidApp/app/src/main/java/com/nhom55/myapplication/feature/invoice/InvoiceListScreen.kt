@@ -84,7 +84,7 @@ fun InvoiceListScreen(
         // FAB for admin/landlord only
         if (isAdminOrChuTro) {
             FloatingActionButton(
-                onClick = { navController.navigate("create_invoice") },
+                onClick = { navController.navigate("create_edit_invoice/new") },
                 containerColor = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)

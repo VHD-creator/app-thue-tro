@@ -1,5 +1,5 @@
 import express from 'express';
-import { processMessage } from '../services/chatbotService.js';
+import { processMessageGemini } from '../services/geminiService.js';
 import { verifyToken, optionalAuth } from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -14,7 +14,7 @@ router.post('/', optionalAuth, async (req, res) => {
       return res.status(400).json({ error: 'Vui lòng nhập tin nhắn' });
     }
 
-    const result = await processMessage(message);
+    const result = await processMessageGemini(message);
     res.json(result);
 
   } catch (error) {

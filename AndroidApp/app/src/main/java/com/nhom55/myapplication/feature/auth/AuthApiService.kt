@@ -7,7 +7,7 @@ import retrofit2.http.POST
 data class RegisterRequest(
     val ten_dang_nhap: String,
     val password: String,
-    val vai_tro: String = "NGUOI_THUE",
+    val vai_tro: String,
     val ho_ten: String,
     val email: String,
     val so_dien_thoai: String

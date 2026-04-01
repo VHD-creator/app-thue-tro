@@ -47,7 +47,9 @@ data class HinhAnhPhong(
 enum class RoomStatus {
     AVAILABLE, // Còn trống
     OCCUPIED,  // Đang thuê
-    MAINTENANCE // Đang sửa chữa
+    MAINTENANCE, // Đang sửa chữa
+    PENDING, // Chờ thanh toán/cọc
+    CONTRACT_ENDED // Hết hợp đồng
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,7 +106,8 @@ fun RoomListScreen(
                     )
 
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                            .padding(bottom = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         FilterChip(
@@ -125,20 +128,22 @@ fun RoomListScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(filteredRooms) { room ->
-                            RoomCard(room = room, onClick = { navController.navigate("room_detail/${room.id}") })
+                            RoomCard(
+                                room = room,
+                                onClick = { navController.navigate("room_detail/${room.id}") })
                         }
                     }
                 } else {
                     if (selectedAddress == null) {
                         val groupedRooms = allRooms.groupBy { it.address }
-                        
+
                         Text(
                             text = "Danh sách khu trọ",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(16.dp)
                         )
-                        
+
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -146,9 +151,11 @@ fun RoomListScreen(
                         ) {
                             items(groupedRooms.keys.toList()) { address ->
                                 val roomsInAddress = groupedRooms[address] ?: emptyList()
-                                val landlordName = roomsInAddress.firstOrNull()?.landlordName ?: "Chủ trọ"
-                                val availableCount = roomsInAddress.count { it.status == RoomStatus.AVAILABLE }
-                                
+                                val landlordName =
+                                    roomsInAddress.firstOrNull()?.landlordName ?: "Chủ trọ"
+                                val availableCount =
+                                    roomsInAddress.count { it.status == RoomStatus.AVAILABLE }
+
                                 LocationCard(
                                     address = address,
                                     landlordName = landlordName,
@@ -159,24 +166,39 @@ fun RoomListScreen(
                             }
                         }
                     } else {
-                        val filteredRooms = viewModel.getFilteredRooms(allRooms.filter { it.address == selectedAddress })
+                        val filteredRooms =
+                            viewModel.getFilteredRooms(allRooms.filter { it.address == selectedAddress })
 
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                                .padding(horizontal = 4.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(onClick = { selectedAddress = null }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Quay lại"
+                                )
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
-                                Text("Khu trọ", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                                Text(selectedAddress!!, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+                                Text(
+                                    "Khu trọ",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    selectedAddress!!,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
                             }
                         }
 
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             FilterChip(
@@ -197,14 +219,15 @@ fun RoomListScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(filteredRooms) { room ->
-                                RoomCard(room = room, onClick = { navController.navigate("room_detail/${room.id}") })
+                                RoomCard(
+                                    room = room,
+                                    onClick = { navController.navigate("room_detail/${room.id}") })
                             }
                         }
                     }
                 }
             }
         }
-        // Đóng ngoặc cho Column
         }
 
         if (isAdminOrChuTro) {
@@ -248,6 +271,8 @@ fun StatusChip(status: RoomStatus) {
         RoomStatus.AVAILABLE -> Triple(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer, "Còn trống")
         RoomStatus.OCCUPIED -> Triple(MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.errorContainer, "Đang thuê")
         RoomStatus.MAINTENANCE -> Triple(MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer, "Sửa chữa")
+        RoomStatus.PENDING -> Triple(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer, "Chờ cọc")
+        RoomStatus.CONTRACT_ENDED -> Triple(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer, "Hết hợp đồng")
     }
     Surface(color = containerColor, shape = MaterialTheme.shapes.small) {
         Text(text = text, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall, color = contentColor)

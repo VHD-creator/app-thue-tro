@@ -7,6 +7,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -138,6 +139,11 @@ fun InvoiceDetailScreen(
                 modifier = Modifier.weight(1f)
             )
             if (invoice != null && isAdminOrChuTro) {
+                IconButton(onClick = {
+                    navController.navigate("create_edit_invoice/${invoiceId}")
+                }) {
+                    Icon(Icons.Default.Edit, contentDescription = "Chỉnh sửa")
+                }
                 IconButton(
                     onClick = { showDeleteDialog = true },
                     enabled = !isOperating

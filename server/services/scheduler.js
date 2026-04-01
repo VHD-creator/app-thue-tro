@@ -56,4 +56,62 @@ cron.schedule('0 9 * * *', async () => {
   }
 });
 
+// Reset phòng "Hết hợp đồng" (4) về "Trống" (0) vào ngày 1 hàng tháng
+cron.schedule('0 0 1 * *', async () => {
+  console.log('Đang chạy tác vụ tự động reset trạng thái phòng...');
+  try {
+    const Phong = (await import('../models/Phong.js')).default;
+    const [updatedCount] = await Phong.update(
+      { trang_thai: 0 },
+      { where: { trang_thai: 4 } }
+    );
+    console.log(`Đã reset ${updatedCount} phòng từ "Hết hợp đồng" về "Trống".`);
+  } catch (error) {
+    console.error('Lỗi khi reset trạng thái phòng:', error);
+  }
+});
+
+// Tự động hủy hợp đồng chờ cọc quá 3 ngày
+// Chạy hàng ngày lúc 01:00 sáng
+cron.schedule('0 1 * * *', async () => {
+  console.log('Đang kiểm tra các hợp đồng chờ cọc quá hạn (3 ngày)...');
+  try {
+    const HopDong = (await import('../models/HopDong.js')).default;
+    const Phong = (await import('../models/Phong.js')).default;
+    const HoaDon = (await import('../models/HoaDon.js')).default;
+
+    const baNgayTruoc = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+
+    const hopDongsQuaHan = await HopDong.findAll({
+      where: {
+        trang_thai: 2, // Chờ cọc
+        ngay_tao: {
+          [Op.lt]: baNgayTruoc
+        }
+      }
+    });
+
+    console.log(`Tìm thấy ${hopDongsQuaHan.length} hợp đồng quá hạn cần hủy.`);
+
+    for (const hd of hopDongsQuaHan) {
+      // 1. Xóa các hóa đơn liên quan
+      await HoaDon.destroy({ where: { id_hop_dong: hd.id_hop_dong } });
+
+      // 2. Reset trạng thái phòng về 0 (Trống)
+      await Phong.update({ trang_thai: 0 }, { where: { id_phong: hd.id_phong } });
+
+      // 3. Xóa hợp đồng
+      await hd.destroy();
+      
+      console.log(`Đã hủy hợp đồng #${hd.id_hop_dong} và giải phóng phòng #${hd.id_phong}`);
+    }
+
+    if (hopDongsQuaHan.length > 0) {
+      console.log(`Hoàn tất hủy ${hopDongsQuaHan.length} hợp đồng quá hạn.`);
+    }
+  } catch (error) {
+    console.error('Lỗi trong tác vụ tự động hủy hợp đồng:', error);
+  }
+});
+
 console.log('⏰ Scheduler đã được khởi động');

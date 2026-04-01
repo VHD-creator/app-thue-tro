@@ -13,6 +13,7 @@ data class InvoiceApiModel(
     val tien_phong: Double,
     val tong_tien: Double,
     val trang_thai: Int,
+    val id_hop_dong: Int?,
     val Phong: RoomBasicInfo?
 )
 

@@ -17,6 +17,7 @@ import com.nhom55.myapplication.feature.contract.ContractListScreen
 import com.nhom55.myapplication.core.session.SessionManager
 import com.nhom55.myapplication.feature.auth.LoginScreen
 import com.nhom55.myapplication.feature.auth.RegisterScreen
+import com.nhom55.myapplication.feature.dashboard.DashboardScreen
 import com.nhom55.myapplication.feature.room.RoomDetailScreen
 import com.nhom55.myapplication.feature.room.RoomListScreen
 import com.nhom55.myapplication.feature.invoice.InvoiceListScreen
@@ -28,6 +29,7 @@ import kotlinx.coroutines.launch
 
 // Định nghĩa các route
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
+    object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Home)
     object RoomList : Screen("room_list", "Danh sách phòng", Icons.Default.Home)
     object Login : Screen("login", "Đăng nhập", Icons.Default.Person)
     object Register : Screen("register", "Đăng ký", Icons.Default.Person)
@@ -55,9 +57,14 @@ fun MainScreen() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // Đảm bảo đóng Drawer mỗi lần đổi route (ví dụ: chuyển từ Login sang Dashboard)
+    LaunchedEffect(currentRoute) {
+        drawerState.close()
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = isAdminOrChuTro,
+        gesturesEnabled = isAdminOrChuTro && drawerState.isOpen, // Chỉ nhận swipe khi drawer đang mở
         drawerContent = {
             if (isAdminOrChuTro) {
                 DrawerContent(
@@ -156,9 +163,14 @@ fun MainScreen() {
                 composable(Screen.RoomList.route) {
                     if (!isAdminOrChuTro && isLoggedIn) {
                         TenantDashboardScreen(navController = navController)
+                    } else if (isAdminOrChuTro) {
+                        DashboardScreen(navController = navController)
                     } else {
                         RoomListScreen(navController = navController)
                     }
+                }
+                composable(Screen.Dashboard.route) {
+                    DashboardScreen(navController = navController)
                 }
                 composable("all_rooms") { // Custom route for tenant to view all locations/rooms
                     RoomListScreen(navController = navController)
@@ -213,8 +225,28 @@ fun MainScreen() {
                         navController = navController
                     )
                 }
-                composable("create_invoice") {
-                    com.nhom55.myapplication.feature.invoice.CreateInvoiceScreen(
+                composable(
+                    route = "create_edit_invoice/{invoiceId}",
+                    arguments = listOf(navArgument("invoiceId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val invoiceId = backStackEntry.arguments?.getString("invoiceId") ?: "new"
+                    com.nhom55.myapplication.feature.invoice.CreateEditInvoiceScreen(
+                        invoiceId = if (invoiceId == "new") null else invoiceId.toIntOrNull(),
+                        navController = navController
+                    )
+                }
+                composable(
+                    route = "create_edit_contract/{contractId}",
+                    arguments = listOf(
+                        navArgument("contractId") { type = NavType.StringType },
+                        navArgument("roomId") { type = NavType.StringType; nullable = true }
+                    )
+                ) { backStackEntry ->
+                    val contractId = backStackEntry.arguments?.getString("contractId") ?: "new"
+                    val roomId = backStackEntry.arguments?.getString("roomId")
+                    com.nhom55.myapplication.feature.contract.CreateEditContractScreen(
+                        contractId = if (contractId == "new") null else contractId,
+                        roomId = roomId,
                         navController = navController
                     )
                 }
@@ -246,6 +278,7 @@ fun MainScreen() {
                 }
                 composable(Screen.Reports.route) {
                     PlaceholderScreen("Báo cáo")
+                    // TODO Gđ 3: Implement ReportScreen
                 }
                 composable(Screen.Settings.route) {
                     PlaceholderScreen("Cài đặt")

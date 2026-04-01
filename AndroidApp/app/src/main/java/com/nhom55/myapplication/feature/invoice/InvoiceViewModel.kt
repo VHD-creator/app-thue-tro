@@ -14,9 +14,19 @@ sealed class InvoiceUiState {
     data class Error(val message: String) : InvoiceUiState()
 }
 
+sealed class CreateInvoiceUiState {
+    object Idle : CreateInvoiceUiState()
+    object Loading : CreateInvoiceUiState()
+    object Success : CreateInvoiceUiState()
+    data class Error(val message: String) : CreateInvoiceUiState()
+}
+
 class InvoiceViewModel : ViewModel() {
     private val _uiState = MutableStateFlow<InvoiceUiState>(InvoiceUiState.Loading)
     val uiState: StateFlow<InvoiceUiState> = _uiState.asStateFlow()
+
+    private val _createUiState = MutableStateFlow<CreateInvoiceUiState>(CreateInvoiceUiState.Idle)
+    val createUiState: StateFlow<CreateInvoiceUiState> = _createUiState.asStateFlow()
 
     private val _isOperating = MutableStateFlow(false)
     val isOperating: StateFlow<Boolean> = _isOperating.asStateFlow()
@@ -89,6 +99,42 @@ class InvoiceViewModel : ViewModel() {
                 _isOperating.value = false
             }
         }
+    }
+
+    fun createInvoice(body: Map<String, Any>) {
+        viewModelScope.launch {
+            _createUiState.value = CreateInvoiceUiState.Loading
+            try {
+                RetrofitInstance.invoiceApi.createInvoice(body)
+                _createUiState.value = CreateInvoiceUiState.Success
+                loadInvoices()
+            } catch (e: Exception) {
+                _createUiState.value = CreateInvoiceUiState.Error(e.message ?: "Lỗi khi tạo hóa đơn")
+            }
+        }
+    }
+
+    fun updateInvoice(id: Int, body: Map<String, Any>, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            _isOperating.value = true
+            try {
+                val response = RetrofitInstance.invoiceApi.updateInvoice(id, body)
+                if (response.isSuccessful) {
+                    loadInvoices()
+                    onSuccess()
+                } else {
+                    onError("Lỗi khi cập nhật hóa đơn")
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Lỗi khi cập nhật hóa đơn")
+            } finally {
+                _isOperating.value = false
+            }
+        }
+    }
+
+    fun resetCreateState() {
+        _createUiState.value = CreateInvoiceUiState.Idle
     }
 
     private fun parseErrorMessage(errorBody: String?): String? {

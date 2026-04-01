@@ -22,6 +22,9 @@ HopDong.belongsTo(NguoiThue, { foreignKey: 'id_nguoi_thue', as: 'NguoiThue' });
 Phong.hasMany(HoaDon, { foreignKey: 'id_phong', as: 'DanhSachHoaDon' });
 HoaDon.belongsTo(Phong, { foreignKey: 'id_phong', as: 'Phong' });
 
+HopDong.hasMany(HoaDon, { foreignKey: 'id_hop_dong', as: 'DanhSachHoaDon' });
+HoaDon.belongsTo(HopDong, { foreignKey: 'id_hop_dong', as: 'HopDong' });
+
 HoaDon.hasMany(ThanhToan, { foreignKey: 'id_hoa_don', as: 'DanhSachThanhToan' });
 ThanhToan.belongsTo(HoaDon, { foreignKey: 'id_hoa_don', as: 'HoaDon' });
 

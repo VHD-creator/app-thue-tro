@@ -149,6 +149,11 @@ fun ContractDetailScreen(
                 modifier = Modifier.weight(1f)
             )
             if (contract != null && isAdminOrChuTro) {
+                IconButton(onClick = {
+                    navController.navigate("create_edit_contract/${contractId}")
+                }) {
+                    Icon(Icons.Default.Edit, contentDescription = "Chỉnh sửa")
+                }
                 IconButton(
                     onClick = { showDeleteDialog = true },
                     enabled = !isOperating

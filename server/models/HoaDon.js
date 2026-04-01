@@ -48,6 +48,14 @@ const HoaDon = sequelize.define('HoaDon', {
   tong_tien: {
     type: DataTypes.DECIMAL(12, 2)
   },
+  id_hop_dong: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'hop_dong',
+      key: 'id_hop_dong'
+    }
+  },
   trang_thai: {
     type: DataTypes.INTEGER,
     defaultValue: 0,

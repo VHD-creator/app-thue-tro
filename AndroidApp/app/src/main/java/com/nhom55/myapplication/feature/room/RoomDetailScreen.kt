@@ -309,7 +309,7 @@ fun RoomDetailContent(
             
             if (room.status == RoomStatus.AVAILABLE) {
                 Button(
-                    onClick = { /* TODO: Gán khách ngoài */ },
+                    onClick = { navController.navigate("create_edit_contract/new?roomId=${room.id}") },
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                 ) {
@@ -361,8 +361,10 @@ fun BookingDialog(
     onDismiss: () -> Unit,
     onConfirm: (startDate: String, endDate: String, deposit: Long) -> Unit
 ) {
-    var startDate by remember { mutableStateOf("") }
-    var endDate by remember { mutableStateOf("") }
+    val currentCalendar = java.util.Calendar.getInstance()
+    var selectedMonth by remember { mutableStateOf(currentCalendar.get(java.util.Calendar.MONTH) + 1) }
+    var selectedYear by remember { mutableStateOf(currentCalendar.get(java.util.Calendar.YEAR)) }
+    var selectedDuration by remember { mutableStateOf(6) } // Mặc định 6 tháng
     var depositText by remember { mutableStateOf(roomPrice.toString()) }
 
     AlertDialog(
@@ -370,20 +372,76 @@ fun BookingDialog(
         title = { Text("Thông tin đặt phòng") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = startDate,
-                    onValueChange = { startDate = it },
-                    label = { Text("Ngày bắt đầu (DD-MM-YYYY)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = endDate,
-                    onValueChange = { endDate = it },
-                    label = { Text("Ngày kết thúc (DD-MM-YYYY)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                // Month, Year selection
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    var monthExpanded by remember { mutableStateOf(false) }
+                    var yearExpanded by remember { mutableStateOf(false) }
+
+                    // Month Picker
+                    ExposedDropdownMenuBox(
+                        expanded = monthExpanded,
+                        onExpandedChange = { monthExpanded = !monthExpanded },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = "Tháng $selectedMonth",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Tháng bắt đầu") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthExpanded) },
+                            modifier = Modifier.menuAnchor()
+                        )
+                        ExposedDropdownMenu(expanded = monthExpanded, onDismissRequest = { monthExpanded = false }) {
+                            (1..12).forEach { m ->
+                                DropdownMenuItem(text = { Text("Tháng $m") }, onClick = { selectedMonth = m; monthExpanded = false })
+                            }
+                        }
+                    }
+
+                    // Year Picker
+                    ExposedDropdownMenuBox(
+                        expanded = yearExpanded,
+                        onExpandedChange = { yearExpanded = !yearExpanded },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = selectedYear.toString(),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Năm") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded) },
+                            modifier = Modifier.menuAnchor()
+                        )
+                        ExposedDropdownMenu(expanded = yearExpanded, onDismissRequest = { yearExpanded = false }) {
+                            (currentCalendar.get(java.util.Calendar.YEAR)..currentCalendar.get(java.util.Calendar.YEAR) + 5).forEach { y ->
+                                DropdownMenuItem(text = { Text(y.toString()) }, onClick = { selectedYear = y; yearExpanded = false })
+                            }
+                        }
+                    }
+                }
+
+                // Duration Picker
+                var durationExpanded by remember { mutableStateOf(false) }
+                val durations = listOf(1, 3, 6, 12, 18, 24)
+                ExposedDropdownMenuBox(
+                    expanded = durationExpanded,
+                    onExpandedChange = { durationExpanded = !durationExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = "$selectedDuration tháng",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Thời hạn hợp đồng") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = durationExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(expanded = durationExpanded, onDismissRequest = { durationExpanded = false }) {
+                        durations.forEach { d ->
+                            DropdownMenuItem(text = { Text("$d tháng") }, onClick = { selectedDuration = d; durationExpanded = false })
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = depositText,
                     onValueChange = { depositText = it },
@@ -396,10 +454,20 @@ fun BookingDialog(
         confirmButton = {
             Button(
                 onClick = {
+                    // Calculate dates
+                    val calendar = java.util.Calendar.getInstance()
+                    calendar.set(selectedYear, selectedMonth - 1, 1)
+                    val df = java.text.SimpleDateFormat("dd-MM-yyyy", java.util.Locale.getDefault())
+                    val finalStartDate = df.format(calendar.time)
+                    
+                    calendar.add(java.util.Calendar.MONTH, selectedDuration)
+                    calendar.add(java.util.Calendar.DAY_OF_YEAR, -1)
+                    val finalEndDate = df.format(calendar.time)
+
                     val deposit = depositText.toLongOrNull() ?: 0L
-                    onConfirm(startDate, endDate, deposit)
+                    onConfirm(finalStartDate, finalEndDate, deposit)
                 },
-                enabled = !isLoading && startDate.isNotBlank() && endDate.isNotBlank()
+                enabled = !isLoading
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)

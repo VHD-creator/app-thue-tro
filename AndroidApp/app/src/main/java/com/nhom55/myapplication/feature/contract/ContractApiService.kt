@@ -14,7 +14,7 @@ interface ContractApiService {
     suspend fun createContract(@Body request: ContractRequest): ContractResponse
 
     @PUT("api/hopDong/{id}")
-    suspend fun updateContract(@Path("id") id: Int, @Body body: Map<String, Any?>): Response<Map<String, Any>>
+    suspend fun updateContract(@Path("id") id: Int, @Body body: Map<String, @JvmSuppressWildcards Any?>): Response<Map<String, Any>>
 
     @DELETE("api/hopDong/{id}")
     suspend fun deleteContract(@Path("id") id: Int): Response<Map<String, Any>>

@@ -163,6 +163,7 @@ fun RegisterScreen(
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var selectedRole by remember { mutableStateOf("NGUOI_THUE") } // Default to Tenant
     
     val uiState by viewModel.uiState.collectAsState()
     val isLoading = uiState is RegisterUiState.Loading
@@ -275,6 +276,31 @@ fun RegisterScreen(
             isError = confirmPassword.isNotBlank() && confirmPassword != password
         )
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Role Selection
+        Text(
+            text = "Bạn là:",
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.align(Alignment.Start)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RadioButton(
+                selected = selectedRole == "NGUOI_THUE",
+                onClick = { selectedRole = "NGUOI_THUE" }
+            )
+            Text("Khách thuê", modifier = Modifier.padding(end = 16.dp))
+
+            RadioButton(
+                selected = selectedRole == "CHU_TRO",
+                onClick = { selectedRole = "CHU_TRO" }
+            )
+            Text("Chủ trọ")
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
@@ -284,7 +310,8 @@ fun RegisterScreen(
                     password = password,
                     ho_ten = name,
                     email = email,
-                    so_dien_thoai = phone
+                    so_dien_thoai = phone,
+                    vai_tro = selectedRole
                 )
                 viewModel.register(request)
             },

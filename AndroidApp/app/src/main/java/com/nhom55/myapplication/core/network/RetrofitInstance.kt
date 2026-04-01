@@ -4,6 +4,7 @@ import com.nhom55.myapplication.feature.auth.AuthApiService
 import com.nhom55.myapplication.feature.contract.ContractApiService
 import com.nhom55.myapplication.feature.invoice.InvoiceApiService
 import com.nhom55.myapplication.feature.payment.PaymentApiService
+import com.nhom55.myapplication.feature.dashboard.ReportApiService
 import com.nhom55.myapplication.feature.room.RoomApiService
 import com.nhom55.myapplication.core.session.SessionManager
 import com.nhom55.myapplication.feature.tenant.TenantApiService
@@ -11,6 +12,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Interceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+
 
 object RetrofitInstance {
     private const val BASE_URL = "http://10.0.2.2:3000/" // Cho Android Emulator
@@ -80,4 +82,13 @@ object RetrofitInstance {
             .build()
             .create(PaymentApiService::class.java)
     }
-}
+
+    val reportApi: ReportApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(ReportApiService::class.java)
+    }
+}

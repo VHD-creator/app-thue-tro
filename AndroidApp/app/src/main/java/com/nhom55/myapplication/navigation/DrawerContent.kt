@@ -82,7 +82,7 @@ fun DrawerContent(
         // Menu Items
         DrawerMenuItem(
             icon = Icons.Default.Home,
-            title = "Danh sách phòng",
+            title = "Trang chủ",
             onClick = {
                 navController.navigate(Screen.RoomList.route) {
                     popUpTo(Screen.RoomList.route) { inclusive = true }
