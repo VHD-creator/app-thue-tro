@@ -21,8 +21,8 @@ export const validateDate = (dateStr) => {
   const [d, m, y] = dateStr.split('-').map(Number);
   const date = new Date(y, m - 1, d);
   return date.getFullYear() === y &&
-         date.getMonth() === m - 1 &&
-         date.getDate() === d;
+    date.getMonth() === m - 1 &&
+    date.getDate() === d;
 };
 
 export const validateMonthYear = (str) => {
@@ -50,7 +50,6 @@ export const validateStatus = (status) => {
   return [0, 1, 2].includes(parseInt(status));
 };
 
-// ✅ Đúng theo file gốc của bạn — chỉ 2 method
 export const validatePaymentMethod = (method) => {
   const allowed = [
     'tiền mặt',
