@@ -16,6 +16,8 @@ import com.nhom55.myapplication.core.network.CreateRoomRequest
 import com.nhom55.myapplication.core.network.UpdateRoomRequest
 import com.nhom55.myapplication.core.network.DeleteRoomResponse
 import com.nhom55.myapplication.core.network.UploadImagesResponse
+import com.nhom55.myapplication.core.network.DeleteImageResponse
+import com.nhom55.myapplication.core.network.FeaturedImageResponse
 
 interface RoomApiService {
     @GET("api/phong")
@@ -45,4 +47,10 @@ interface RoomApiService {
         @Path("id_phong") roomId: Int,
         @Part images: List<MultipartBody.Part>
     ): UploadImagesResponse
+
+    @DELETE("api/hinhAnh/{id_hinh_anh}")
+    suspend fun deleteRoomImage(@Path("id_hinh_anh") imageId: Int): DeleteImageResponse
+
+    @PUT("api/hinhAnh/{id_hinh_anh}/set-dai-dien")
+    suspend fun setFeaturedImage(@Path("id_hinh_anh") imageId: Int): FeaturedImageResponse
 }

@@ -176,12 +176,8 @@ router.post('/login', async (req, res) => {
       }
     };
 
-    // Thêm thông tin profile theo vai trò
-    if (user.vai_tro === 'CHU_TRO' && user.ChuTro) {
-      responseData.user.profile = user.ChuTro;
-    } else if (user.vai_tro === 'NGUOI_THUE' && user.NguoiThue) {
-      responseData.user.profile = user.NguoiThue;
-    }
+    // Thêm thông tin profile nếu có
+    responseData.user.profile = user.ChuTro || user.NguoiThue || null;
 
     return res.json(responseData);
   } catch (error) {
@@ -214,8 +210,7 @@ router.get('/me', verifyToken, async (req, res) => {
       trang_thai: userData.trang_thai
     };
 
-    if (userData.vai_tro === 'CHU_TRO') result.profile = userData.ChuTro;
-    if (userData.vai_tro === 'NGUOI_THUE') result.profile = userData.NguoiThue;
+    result.profile = userData.ChuTro || userData.NguoiThue || null;
 
     res.json({ message: 'Lấy thông tin thành công', user: result });
   } catch (error) {

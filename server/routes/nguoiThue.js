@@ -135,6 +135,7 @@ router.get('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
 
     res.json(tenants);
   } catch (error) {
+    console.error('Error in GET /api/nguoiThue:', error);
     res.status(500).json({ error: error.message });
   }
 });

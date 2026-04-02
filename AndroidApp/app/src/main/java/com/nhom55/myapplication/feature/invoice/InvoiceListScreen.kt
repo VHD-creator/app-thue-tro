@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.nhom55.myapplication.core.session.SessionManager
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,6 +27,14 @@ fun InvoiceListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val currentUser by SessionManager.currentUser.collectAsState()
     val isAdminOrChuTro = currentUser?.role == "ADMIN" || currentUser?.role == "CHU_TRO"
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+
+    LaunchedEffect(navBackStackEntry) {
+        if (navBackStackEntry?.savedStateHandle?.get<Boolean>("refresh") == true) {
+            viewModel.loadInvoices()
+            navBackStackEntry?.savedStateHandle?.remove<Boolean>("refresh")
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.loadInvoices()

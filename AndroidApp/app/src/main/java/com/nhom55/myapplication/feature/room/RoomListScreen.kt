@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.nhom55.myapplication.core.session.SessionManager
 import androidx.compose.material.icons.filled.Add
 import java.text.NumberFormat
@@ -25,6 +26,7 @@ import java.util.Locale
 // Data class cho Room - Thêm description
 data class Room(
     val id: String,
+    val landlordId: Int,
     val name: String,
     val floor: Int,
     val price: Long,
@@ -60,8 +62,16 @@ fun RoomListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val selectedFilter by viewModel.selectedFilter.collectAsState()
-    var selectedAddress by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedLandlordId by rememberSaveable { mutableStateOf<Int?>(null) }
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
     
+    LaunchedEffect(navBackStackEntry) {
+        if (navBackStackEntry?.savedStateHandle?.get<Boolean>("refresh") == true) {
+            viewModel.loadRooms()
+            navBackStackEntry?.savedStateHandle?.remove<Boolean>("refresh")
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.loadRooms()
     }
@@ -134,8 +144,8 @@ fun RoomListScreen(
                         }
                     }
                 } else {
-                    if (selectedAddress == null) {
-                        val groupedRooms = allRooms.groupBy { it.address }
+                    if (selectedLandlordId == null) {
+                        val groupedRooms = allRooms.groupBy { it.landlordId }
 
                         Text(
                             text = "Danh sách khu trọ",
@@ -149,32 +159,36 @@ fun RoomListScreen(
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            items(groupedRooms.keys.toList()) { address ->
-                                val roomsInAddress = groupedRooms[address] ?: emptyList()
+                            items(groupedRooms.keys.toList()) { lId ->
+                                val roomsInLandlord = groupedRooms[lId] ?: emptyList()
                                 val landlordName =
-                                    roomsInAddress.firstOrNull()?.landlordName ?: "Chủ trọ"
+                                    roomsInLandlord.firstOrNull()?.landlordName ?: "Chủ trọ"
+                                val address =
+                                    roomsInLandlord.firstOrNull()?.address ?: "Chưa cập nhật địa chỉ"
                                 val availableCount =
-                                    roomsInAddress.count { it.status == RoomStatus.AVAILABLE }
+                                    roomsInLandlord.count { it.status == RoomStatus.AVAILABLE }
 
                                 LocationCard(
                                     address = address,
                                     landlordName = landlordName,
-                                    totalRooms = roomsInAddress.size,
+                                    totalRooms = roomsInLandlord.size,
                                     availableRooms = availableCount,
-                                    onClick = { selectedAddress = address }
+                                    onClick = { selectedLandlordId = lId }
                                 )
                             }
                         }
                     } else {
                         val filteredRooms =
-                            viewModel.getFilteredRooms(allRooms.filter { it.address == selectedAddress })
+                            viewModel.getFilteredRooms(allRooms.filter { it.landlordId == selectedLandlordId })
+                        val selectedRoomsList = allRooms.filter { it.landlordId == selectedLandlordId }
+                        val displayAddress = selectedRoomsList.firstOrNull()?.address ?: "Chưa cập nhật địa chỉ"
 
                         Row(
                             modifier = Modifier.fillMaxWidth()
                                 .padding(horizontal = 4.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = { selectedAddress = null }) {
+                            IconButton(onClick = { selectedLandlordId = null }) {
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = "Quay lại"
@@ -188,7 +202,7 @@ fun RoomListScreen(
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
-                                    selectedAddress!!,
+                                    displayAddress,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1

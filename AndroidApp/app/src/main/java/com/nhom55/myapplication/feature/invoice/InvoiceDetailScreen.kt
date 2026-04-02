@@ -102,6 +102,8 @@ fun InvoiceDetailScreen(
                             id = invoiceId,
                             onSuccess = {
                                 Toast.makeText(context, "Đã xác nhận thu tiền", Toast.LENGTH_SHORT).show()
+                                navController.previousBackStackEntry?.savedStateHandle?.set("refresh", true)
+                                navController.navigateUp()
                             },
                             onError = { msg ->
                                 Toast.makeText(context, msg, Toast.LENGTH_LONG).show()

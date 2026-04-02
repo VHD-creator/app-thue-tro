@@ -73,6 +73,7 @@ router.get('/thongKe', verifyToken, requireChuTroOrAdmin, async (req, res) => {
       hop_dong_dang_hoat_dong: hopDongDangHoatDong
     });
   } catch (error) {
+    console.error('Error in /api/baoCao/thongKe:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -103,7 +104,10 @@ router.get('/tongHop', verifyToken, requireChuTroOrAdmin, async (req, res) => {
     }
     
     const thanhToans = await ThanhToan.findAll({ where: thanhToanFilter });
-    const tongDoanhThu = thanhToans.reduce((sum, tt) => sum + parseFloat(tt.so_tien), 0);
+    const tongDoanhThu = thanhToans.reduce((sum, tt) => {
+      const val = parseFloat(tt.so_tien || 0);
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
 
     res.json({
       phong: { tong: tongPhong, trong: phongTrong, choThue: phongChoThue },
@@ -112,6 +116,7 @@ router.get('/tongHop', verifyToken, requireChuTroOrAdmin, async (req, res) => {
       tongThanhToan: thanhToans.length
     });
   } catch (error) {
+    console.error('Error in /api/baoCao/tongHop:', error);
     res.status(500).json({ error: error.message });
   }
 });

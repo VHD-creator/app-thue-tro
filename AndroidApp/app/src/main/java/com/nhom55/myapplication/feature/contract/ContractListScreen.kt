@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,6 +23,14 @@ fun ContractListScreen(
     viewModel: ContractViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+
+    LaunchedEffect(navBackStackEntry) {
+        if (navBackStackEntry?.savedStateHandle?.get<Boolean>("refresh") == true) {
+            viewModel.loadContracts()
+            navBackStackEntry?.savedStateHandle?.remove<Boolean>("refresh")
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.loadContracts()

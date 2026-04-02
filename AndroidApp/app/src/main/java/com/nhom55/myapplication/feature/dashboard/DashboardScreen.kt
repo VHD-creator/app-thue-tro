@@ -217,7 +217,7 @@ fun DashboardScreen(
                     modifier = Modifier.weight(1f),
                     icon = Icons.Default.Home,
                     label = "Phòng trọ",
-                    onClick = { navController.navigate("room_list") }
+                    onClick = { navController.navigate("all_rooms") }
                 )
                 QuickAccessCard(
                     modifier = Modifier.weight(1f),

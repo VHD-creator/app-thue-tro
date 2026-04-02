@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
@@ -106,6 +107,20 @@ fun DrawerContent(
                     onCloseDrawer()
                 }
             )
+
+            if (currentUser?.role == "ADMIN") {
+                DrawerMenuItem(
+                    icon = Icons.Default.People,
+                    title = "Quản lý người dùng",
+                    onClick = {
+                        navController.navigate(Screen.UserList.route) {
+                            popUpTo(Screen.RoomList.route)
+                            launchSingleTop = true
+                        }
+                        onCloseDrawer()
+                    }
+                )
+            }
 
             DrawerMenuItem(
                 icon = Icons.Default.Info,

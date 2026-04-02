@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,22 +25,21 @@ fun TenantListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+
+    LaunchedEffect(navBackStackEntry) {
+        if (navBackStackEntry?.savedStateHandle?.get<Boolean>("refresh") == true) {
+            viewModel.loadTenants()
+            navBackStackEntry?.savedStateHandle?.remove<Boolean>("refresh")
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.loadTenants()
     }
 
-    Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate("create_edit_tenant/new") }
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Thêm khách thuê")
-            }
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(paddingValues)
-        ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
             when (val state = uiState) {
                 is TenantUiState.Loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -77,6 +77,17 @@ fun TenantListScreen(
                     }
                 }
             }
+        }
+
+        FloatingActionButton(
+            onClick = { navController.navigate("create_edit_tenant/new") },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Thêm khách thuê")
         }
     }
 }

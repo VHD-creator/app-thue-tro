@@ -111,6 +111,7 @@ export const requireChuTroOrAdmin = async (req, res, next) => {
 
     next();
   } catch (error) {
+    console.error('Middleware requireChuTroOrAdmin error:', error);
     res.status(500).json({ error: error.message });
   }
 };

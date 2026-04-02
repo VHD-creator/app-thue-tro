@@ -2,6 +2,7 @@ package com.nhom55.myapplication.core.network
 
 import com.nhom55.myapplication.feature.room.Room
 import com.nhom55.myapplication.feature.room.RoomStatus
+import com.google.gson.annotations.SerializedName
 
 // Response từ API
 data class ApiResponse<T>(
@@ -17,6 +18,7 @@ data class RoomApiModel(
     val gia_phong: Long,
     val trang_thai: String,
     val mo_ta: String?,
+    @SerializedName("ChuTro")
     val chu_tro: ChuTroInfo? = null
 )
 
@@ -40,10 +42,28 @@ data class HinhAnhPhongApiModel(
     val ngay_upload: String
 )
 
+data class TaiKhoanApiModel(
+    val id_tai_khoan: Int,
+    val ten_dang_nhap: String,
+    val vai_tro: String,
+    val trang_thai: Int,
+    @SerializedName("ChuTro")
+    val chu_tro: ProfileData? = null,
+    @SerializedName("NguoiThue")
+    val nguoi_thue: ProfileData? = null
+)
+
+data class ProfileData(
+    val ho_ten: String?,
+    val email: String?,
+    val so_dien_thoai: String?
+)
+
 // Extension function để convert từ API model sang UI model
 fun RoomApiModel.toRoom(): Room {
     return Room(
         id = id_phong.toString(),
+        landlordId = id_chu_tro,
         name = ten_phong,
         floor = extractFloor(ten_phong),
         price = gia_phong,
@@ -102,4 +122,14 @@ data class DeleteRoomResponse(
 
 data class UploadImagesResponse(
     val message: String
+)
+
+data class DeleteImageResponse(
+    val message: String,
+    val id_hinh_anh: Int
+)
+
+data class FeaturedImageResponse(
+    val message: String,
+    val data: HinhAnhPhongApiModel
 )

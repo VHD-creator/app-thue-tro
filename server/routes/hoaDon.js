@@ -49,60 +49,53 @@ router.post('/tinh/:id_phong', verifyToken, requireChuTroOrAdmin, checkPhongOwne
 // ==================== CRUD ====================
 
 // GET /api/hoaDon - Danh sách hóa đơn
-// Chủ trọ: chỉ xem hóa đơn của phòng mình
+// Chủ trọ/Người thuê: chỉ xem hóa đơn của mình
 // Admin: xem tất cả
-// Public: xem tất cả (có thể đổi thành require auth)
-router.get('/', async (req, res) => {
+router.get('/', verifyToken, async (req, res) => {
   try {
     let whereCondition = {};
     
-    // Nếu có token, parse để filter
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.substring(7);
-        const jwt = await import('jsonwebtoken');
-        const decoded = jwt.default.verify(token, process.env.JWT_SECRET);
+    if (req.userRole === 'CHU_TRO') {
+      const chuTro = await ChuTro.findOne({ 
+        where: { id_tai_khoan: req.userId } 
+      });
+      
+      if (chuTro) {
+        const danhSachPhong = await Phong.findAll({
+          where: { id_chu_tro: chuTro.id_chu_tro },
+          attributes: ['id_phong']
+        });
         
-        const taiKhoan = await TaiKhoan.findByPk(decoded.id_tai_khoan);
-        
-        if (taiKhoan?.vai_tro === 'CHU_TRO') {
-          const chuTro = await ChuTro.findOne({ 
-            where: { id_tai_khoan: taiKhoan.id_tai_khoan } 
-          });
-          
-          if (chuTro) {
-            const danhSachPhong = await Phong.findAll({
-              where: { id_chu_tro: chuTro.id_chu_tro },
-              attributes: ['id_phong']
-            });
-            
-            const idPhongs = danhSachPhong.map(p => p.id_phong);
-            whereCondition.id_phong = idPhongs;
-          }
-        } else if (taiKhoan?.vai_tro === 'NGUOI_THUE') {
-          const nguoiThue = await (await import('../models/NguoiThue.js')).default.findOne({ 
-            where: { id_tai_khoan: taiKhoan.id_tai_khoan } 
-          });
-          if (nguoiThue) {
-            const HopDong = (await import('../models/HopDong.js')).default;
-            const hopDongs = await HopDong.findAll({
-              where: { id_nguoi_thue: nguoiThue.id_nguoi_thue }
-            });
-            const idPhongs = hopDongs.map(hd => hd.id_phong);
-            
-            if (idPhongs.length > 0) {
-              whereCondition.id_phong = idPhongs;
-            } else {
-              return res.json([]); // Return immediately to avoid empty array bug
-            }
-          } else {
-            return res.json([]);
-          }
+        const idPhongs = danhSachPhong.map(p => p.id_phong);
+        if (idPhongs.length > 0) {
+          whereCondition.id_phong = idPhongs;
+        } else {
+          return res.json([]);
         }
-      } catch (err) {
-        // Token không hợp lệ, bỏ qua
+      } else {
+        return res.json([]);
       }
+    } else if (req.userRole === 'NGUOI_THUE') {
+      const nguoiThue = await NguoiThue.findOne({ 
+        where: { id_tai_khoan: req.userId } 
+      });
+      
+      if (nguoiThue) {
+        const hopDongs = await HopDong.findAll({
+          where: { id_nguoi_thue: nguoiThue.id_nguoi_thue }
+        });
+        const idPhongs = hopDongs.map(hd => hd.id_phong);
+        
+        if (idPhongs.length > 0) {
+          whereCondition.id_phong = idPhongs;
+        } else {
+          return res.json([]); // Return immediately to avoid empty array bug
+        }
+      } else {
+        return res.json([]);
+      }
+    } else if (req.userRole !== 'ADMIN') {
+      return res.status(403).json({ error: 'Không có quyền truy cập' });
     }
     
     const hoaDons = await HoaDon.findAll({
@@ -155,9 +148,10 @@ router.post('/', verifyToken, requireChuTroOrAdmin, checkPhongOwnership, async (
       id_phong, thang_nam,
       so_dien_cu: so_dien_cu || 0, so_dien_moi: so_dien_moi || 0,
       so_nuoc_cu: so_nuoc_cu || 0, so_nuoc_moi: so_nuoc_moi || 0,
-      tien_dien: tien_dien || 0, tien_nuoc: tien_nuoc || 0,
-      tien_phong: tien_phong || 0,
-      tong_tien: (tien_dien || 0) + (tien_nuoc || 0) + (tien_phong || 0),
+      tien_dien: Number(tien_dien || 0), 
+      tien_nuoc: Number(tien_nuoc || 0),
+      tien_phong: Number(tien_phong || 0),
+      tong_tien: Number(tien_dien || 0) + Number(tien_nuoc || 0) + Number(tien_phong || 0),
       trang_thai: trang_thai || 0
     });
 
@@ -196,7 +190,7 @@ router.put('/:id_hoa_don', verifyToken, requireChuTroOrAdmin, async (req, res) =
     if (tien_phong !== undefined) hoaDon.tien_phong = tien_phong;
     if (trang_thai !== undefined) hoaDon.trang_thai = trang_thai;
 
-    hoaDon.tong_tien = (hoaDon.tien_dien || 0) + (hoaDon.tien_nuoc || 0) + (hoaDon.tien_phong || 0);
+    hoaDon.tong_tien = Number(hoaDon.tien_dien || 0) + Number(hoaDon.tien_nuoc || 0) + Number(hoaDon.tien_phong || 0);
 
     await hoaDon.save();
     res.json({ message: 'Cập nhật hóa đơn thành công', data: hoaDon });

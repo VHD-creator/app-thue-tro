@@ -29,9 +29,9 @@ class LoginViewModel : ViewModel() {
             try {
                 val response = RetrofitInstance.authApi.login(request)
                 
-                val profile = response.user.chu_tro ?: response.user.nguoi_thue
+                val profile = response.user.profile ?: response.user.chu_tro ?: response.user.nguoi_thue
                 val nameToDisplay = profile?.ho_ten ?: response.user.ten_dang_nhap
-                val emailToDisplay = profile?.email ?: response.user.vai_tro
+                val emailToDisplay = profile?.email ?: response.user.ten_dang_nhap
                 
                 SessionManager.login(
                     user = User(

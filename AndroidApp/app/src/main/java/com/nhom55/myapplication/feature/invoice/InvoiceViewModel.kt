@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import retrofit2.Response
+import retrofit2.HttpException
 
 sealed class InvoiceUiState {
     object Loading : InvoiceUiState()
@@ -108,6 +110,10 @@ class InvoiceViewModel : ViewModel() {
                 RetrofitInstance.invoiceApi.createInvoice(body)
                 _createUiState.value = CreateInvoiceUiState.Success
                 loadInvoices()
+            } catch (e: retrofit2.HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                val errorMsg = parseErrorMessage(errorBody) ?: "Lỗi ${e.code()}"
+                _createUiState.value = CreateInvoiceUiState.Error(errorMsg)
             } catch (e: Exception) {
                 _createUiState.value = CreateInvoiceUiState.Error(e.message ?: "Lỗi khi tạo hóa đơn")
             }
@@ -123,8 +129,14 @@ class InvoiceViewModel : ViewModel() {
                     loadInvoices()
                     onSuccess()
                 } else {
-                    onError("Lỗi khi cập nhật hóa đơn")
+                    val errorBody = response.errorBody()?.string()
+                    val errorMsg = parseErrorMessage(errorBody) ?: "Lỗi khi cập nhật hóa đơn"
+                    onError(errorMsg)
                 }
+            } catch (e: retrofit2.HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                val errorMsg = parseErrorMessage(errorBody) ?: "Lỗi kết nối"
+                onError(errorMsg)
             } catch (e: Exception) {
                 onError(e.message ?: "Lỗi khi cập nhật hóa đơn")
             } finally {
@@ -140,8 +152,10 @@ class InvoiceViewModel : ViewModel() {
     private fun parseErrorMessage(errorBody: String?): String? {
         if (errorBody == null) return null
         return try {
-            val json = com.google.gson.JsonParser.parseString(errorBody).asJsonObject
-            json.get("error")?.asString
+            val json = org.json.JSONObject(errorBody)
+            if (json.has("error")) json.getString("error")
+            else if (json.has("message")) json.getString("message")
+            else null
         } catch (e: Exception) {
             null
         }

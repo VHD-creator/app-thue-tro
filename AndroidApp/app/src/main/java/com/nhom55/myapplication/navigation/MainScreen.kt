@@ -2,6 +2,7 @@ package com.nhom55.myapplication.navigation
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,10 +39,11 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object TenantDetail : Screen("tenant_detail/{tenantId}", "Chi tiết khách thuê", Icons.Default.Person)
     object Contracts : Screen("contracts", "Hợp đồng", Icons.Default.Info)
     object ContractDetail : Screen("contract_detail/{contractId}", "Chi tiết hợp đồng", Icons.Default.Info)
-    object Invoices : Screen("invoices", "Hóa đơn", Icons.Default.List)
+    object Invoices : Screen("invoices", "Hóa đơn", Icons.AutoMirrored.Filled.List)
     object Reports : Screen("reports", "Báo cáo", Icons.Default.Check)
     object Settings : Screen("settings", "Cài đặt", Icons.Default.Settings)
     object Profile : Screen("profile", "Hồ sơ cá nhân", Icons.Default.Person)
+    object UserList : Screen("user_list", "Quản lý người dùng", Icons.Default.Person)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,6 +59,19 @@ fun MainScreen() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    val isTopLevelRoute = currentRoute in listOf(
+        Screen.Dashboard.route,
+        Screen.RoomList.route,
+        "all_rooms",
+        Screen.Tenants.route,
+        Screen.Contracts.route,
+        Screen.Invoices.route,
+        Screen.Reports.route,
+        Screen.Profile.route,
+        Screen.Settings.route,
+        Screen.UserList.route
+    )
+
     // Đảm bảo đóng Drawer mỗi lần đổi route (ví dụ: chuyển từ Login sang Dashboard)
     LaunchedEffect(currentRoute) {
         drawerState.close()
@@ -64,7 +79,7 @@ fun MainScreen() {
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = isAdminOrChuTro && drawerState.isOpen, // Chỉ nhận swipe khi drawer đang mở
+        gesturesEnabled = isAdminOrChuTro && drawerState.isOpen,
         drawerContent = {
             if (isAdminOrChuTro) {
                 DrawerContent(
@@ -80,79 +95,81 @@ fun MainScreen() {
     ) {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = {
-                        Text(
-                            when {
-                                isAdminOrChuTro -> "Quản lý trọ"
-                                isLoggedIn -> "Dashboard Của Tôi"
-                                else -> "Phòng Trọ 55"
-                            }
-                        )
-                    },
-                    navigationIcon = {
-                        if (isAdminOrChuTro) {
-                            IconButton(onClick = {
-                                scope.launch { drawerState.open() }
-                            }) {
-                                Icon(Icons.Default.Menu, contentDescription = "Menu")
-                            }
-                        }
-                    },
-                    actions = {
-                        if (!isLoggedIn && currentRoute != Screen.Login.route && currentRoute != Screen.Register.route) {
-                            // Guest on home: show Login button
-                            TextButton(
-                                onClick = {
-                                    navController.navigate(Screen.Login.route) {
-                                        launchSingleTop = true
-                                    }
+                if (isTopLevelRoute) {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                when {
+                                    isAdminOrChuTro -> "Quản lý trọ"
+                                    isLoggedIn -> "Dashboard Của Tôi"
+                                    else -> "Phòng Trọ 55"
                                 }
-                            ) {
-                                Text("Đăng nhập", color = MaterialTheme.colorScheme.onPrimary)
-                            }
-                        } else if (!isLoggedIn && (currentRoute == Screen.Login.route || currentRoute == Screen.Register.route)) {
-                            // Guest on Login/Register: show Home button
-                            TextButton(
-                                onClick = {
-                                    navController.navigate(Screen.RoomList.route) {
-                                        popUpTo(Screen.RoomList.route) { inclusive = true }
-                                        launchSingleTop = true
-                                    }
+                            )
+                        },
+                        navigationIcon = {
+                            if (isAdminOrChuTro) {
+                                IconButton(onClick = {
+                                    scope.launch { drawerState.open() }
+                                }) {
+                                    Icon(Icons.Default.Menu, contentDescription = "Menu")
                                 }
-                            ) {
-                                Text("Trang chủ", color = MaterialTheme.colorScheme.onPrimary)
                             }
-                        } else if (!isAdminOrChuTro) {
-                            // Tenant: show 3-dot menu
-                            var showMenu by remember { mutableStateOf(false) }
-                            IconButton(onClick = { showMenu = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "Tùy chọn")
-                            }
-                            DropdownMenu(
-                                expanded = showMenu,
-                                onDismissRequest = { showMenu = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Đăng xuất") },
+                        },
+                        actions = {
+                            if (!isLoggedIn && currentRoute != Screen.Login.route && currentRoute != Screen.Register.route) {
+                                // Guest on home: show Login button
+                                TextButton(
                                     onClick = {
-                                        showMenu = false
-                                        SessionManager.logout()
                                         navController.navigate(Screen.Login.route) {
-                                            popUpTo(0) { inclusive = true }
+                                            launchSingleTop = true
                                         }
                                     }
-                                )
+                                ) {
+                                    Text("Đăng nhập", color = MaterialTheme.colorScheme.onPrimary)
+                                }
+                            } else if (!isLoggedIn && (currentRoute == Screen.Login.route || currentRoute == Screen.Register.route)) {
+                                // Guest on Login/Register: show Home button
+                                TextButton(
+                                    onClick = {
+                                        navController.navigate(Screen.RoomList.route) {
+                                            popUpTo(Screen.RoomList.route) { inclusive = true }
+                                            launchSingleTop = true
+                                        }
+                                    }
+                                ) {
+                                    Text("Trang chủ", color = MaterialTheme.colorScheme.onPrimary)
+                                }
+                            } else if (!isAdminOrChuTro) {
+                                // Tenant: show 3-dot menu
+                                var showMenu by remember { mutableStateOf(false) }
+                                IconButton(onClick = { showMenu = true }) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = "Tùy chọn")
+                                }
+                                DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Đăng xuất") },
+                                        onClick = {
+                                            showMenu = false
+                                            SessionManager.logout()
+                                            navController.navigate(Screen.Login.route) {
+                                                popUpTo(0) { inclusive = true }
+                                            }
+                                        }
+                                    )
+                                }
                             }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                            actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     )
-                )
+                }
             }
         ) { paddingValues ->
             NavHost(
@@ -172,7 +189,7 @@ fun MainScreen() {
                 composable(Screen.Dashboard.route) {
                     DashboardScreen(navController = navController)
                 }
-                composable("all_rooms") { // Custom route for tenant to view all locations/rooms
+                composable("all_rooms") {
                     RoomListScreen(navController = navController)
                 }
                 composable("my_room") {
@@ -236,7 +253,7 @@ fun MainScreen() {
                     )
                 }
                 composable(
-                    route = "create_edit_contract/{contractId}",
+                    route = "create_edit_contract/{contractId}?roomId={roomId}",
                     arguments = listOf(
                         navArgument("contractId") { type = NavType.StringType },
                         navArgument("roomId") { type = NavType.StringType; nullable = true }
@@ -286,6 +303,9 @@ fun MainScreen() {
                 composable(Screen.Profile.route) {
                     com.nhom55.myapplication.feature.profile.ProfileScreen(navController = navController)
                 }
+                composable(Screen.UserList.route) {
+                    com.nhom55.myapplication.feature.admin.UserListScreen(navController = navController)
+                }
             }
         }
     }
@@ -304,7 +324,7 @@ fun PlaceholderScreen(title: String) {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "// TODO: Đang phát triển tính năng này",
+                text = "COMING SOON",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline
             )

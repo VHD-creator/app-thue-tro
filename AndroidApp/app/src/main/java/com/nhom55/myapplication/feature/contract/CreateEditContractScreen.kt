@@ -97,35 +97,36 @@ fun CreateEditContractScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = when {
-                            isEditing -> "Chỉnh sửa hợp đồng"
-                            isAssigning -> "Gán khách cho phòng"
-                            else -> "Tạo hợp đồng mới"
-                        }
-                    )
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Custom header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { navController.navigateUp() }) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Quay lại")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = when {
+                    isEditing -> "Chỉnh sửa hợp đồng"
+                    isAssigning -> "Gán khách cho phòng"
+                    else -> "Tạo hợp đồng mới"
                 },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Quay lại")
-                    }
-                }
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
             )
         }
-    ) { paddingValues ->
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -301,6 +302,7 @@ fun CreateEditContractScreen(
                                         trangThai = 1,
                                         onSuccess = {
                                             Toast.makeText(context, "Cập nhật thành công", Toast.LENGTH_SHORT).show()
+                                            navController.previousBackStackEntry?.savedStateHandle?.set("refresh", true)
                                             navController.navigateUp()
                                         },
                                         onError = { msg ->
@@ -342,6 +344,7 @@ fun CreateEditContractScreen(
         LaunchedEffect(createUiState) {
             if (createUiState is CreateContractUiState.Success) {
                 Toast.makeText(context, "Tạo hợp đồng thành công", Toast.LENGTH_SHORT).show()
+                navController.previousBackStackEntry?.savedStateHandle?.set("refresh", true)
                 navController.navigateUp()
                 viewModel.resetCreateState()
             } else if (createUiState is CreateContractUiState.Error) {

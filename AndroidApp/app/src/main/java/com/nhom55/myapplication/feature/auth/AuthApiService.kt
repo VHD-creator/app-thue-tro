@@ -34,12 +34,22 @@ data class GetMeResponse(
     val user: UserData
 )
 
+data class ChangePasswordRequest(
+    val mat_khau_cu: String,
+    val mat_khau_moi: String
+)
+
+data class ChangePasswordResponse(
+    val message: String
+)
+
 data class UserData(
     val id_tai_khoan: Int,
     val ten_dang_nhap: String,
     val vai_tro: String,
-    val chu_tro: ProfileData?,
-    val nguoi_thue: ProfileData?
+    val chu_tro: ProfileData? = null,
+    val nguoi_thue: ProfileData? = null,
+    val profile: ProfileData? = null
 )
 
 data class ProfileData(
@@ -59,4 +69,7 @@ interface AuthApiService {
 
     @GET("api/auth/me")
     suspend fun getMe(): GetMeResponse
+
+    @POST("api/auth/change-password")
+    suspend fun changePassword(@Body request: ChangePasswordRequest): ChangePasswordResponse
 }

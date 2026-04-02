@@ -24,6 +24,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showPasswordDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.loadProfile()
@@ -62,7 +63,8 @@ fun ProfileScreen(
                 }
                 is ProfileUiState.Success -> {
                     val user = state.user
-                    val name = user.chu_tro?.ho_ten ?: user.nguoi_thue?.ho_ten ?: user.ten_dang_nhap
+                    val profile = user.profile ?: user.chu_tro ?: user.nguoi_thue
+                    val name = profile?.ho_ten ?: user.ten_dang_nhap
                     
                     Column(
                         modifier = Modifier
@@ -113,10 +115,10 @@ fun ProfileScreen(
                             ) {
                                 Text("Thông tin liên hệ", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 
-                                val email = user.chu_tro?.email ?: user.nguoi_thue?.email ?: ""
+                                val email = profile?.email ?: ""
                                 ProfileDetailItem(icon = Icons.Default.Email, label = "Email", value = email.ifEmpty { "Chưa cập nhật" })
 
-                                val phone = user.chu_tro?.so_dien_thoai ?: user.nguoi_thue?.so_dien_thoai ?: ""
+                                val phone = profile?.so_dien_thoai ?: ""
                                 ProfileDetailItem(icon = Icons.Default.Phone, label = "Số điện thoại", value = phone.ifEmpty { "Chưa cập nhật" })
 
                                 if (user.vai_tro == "NGUOI_THUE") {
@@ -134,7 +136,7 @@ fun ProfileScreen(
                         Spacer(modifier = Modifier.weight(1f))
                         
                         Button(
-                            onClick = { /* TODO: Đổi mật khẩu */ },
+                            onClick = { showPasswordDialog = true },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                         ) {
@@ -144,6 +146,13 @@ fun ProfileScreen(
                 }
             }
         }
+    }
+
+    if (showPasswordDialog) {
+        ChangePasswordDialog(
+            viewModel = viewModel,
+            onDismiss = { showPasswordDialog = false }
+        )
     }
 }
 

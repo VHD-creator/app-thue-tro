@@ -7,6 +7,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import retrofit2.Response
+import retrofit2.HttpException
+import org.json.JSONObject
 
 sealed class TenantUiState {
     object Loading : TenantUiState()
@@ -79,6 +82,10 @@ class TenantViewModel : ViewModel() {
                     val errorMsg = parseErrorMessage(errorBody) ?: "Lỗi ${response.code()}"
                     onError(errorMsg)
                 }
+            } catch (e: retrofit2.HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                val errorMsg = parseErrorMessage(errorBody) ?: "Lỗi máy chủ (${e.code()})"
+                onError(errorMsg)
             } catch (e: Exception) {
                 onError(e.message ?: "Đã xảy ra lỗi")
             } finally {
@@ -111,9 +118,13 @@ class TenantViewModel : ViewModel() {
                     onSuccess()
                 } else {
                     val errorBody = response.errorBody()?.string()
-                    val errorMsg = parseErrorMessage(errorBody) ?: "Lỗi ${response.code()}"
+                    val errorMsg = parseErrorMessage(errorBody) ?: "Lỗi khi cập nhật khách thuê"
                     onError(errorMsg)
                 }
+            } catch (e: retrofit2.HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                val errorMsg = parseErrorMessage(errorBody) ?: "Lỗi khi cập nhật khách thuê"
+                onError(errorMsg)
             } catch (e: Exception) {
                 onError(e.message ?: "Đã xảy ra lỗi")
             } finally {
@@ -136,9 +147,13 @@ class TenantViewModel : ViewModel() {
                     onSuccess()
                 } else {
                     val errorBody = response.errorBody()?.string()
-                    val errorMsg = parseErrorMessage(errorBody) ?: "Lỗi ${response.code()}"
+                    val errorMsg = parseErrorMessage(errorBody) ?: "Lỗi khi xóa khách thuê"
                     onError(errorMsg)
                 }
+            } catch (e: retrofit2.HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                val errorMsg = parseErrorMessage(errorBody) ?: "Lỗi khi xóa khách thuê"
+                onError(errorMsg)
             } catch (e: Exception) {
                 onError(e.message ?: "Đã xảy ra lỗi")
             } finally {
@@ -154,8 +169,10 @@ class TenantViewModel : ViewModel() {
     private fun parseErrorMessage(errorBody: String?): String? {
         if (errorBody == null) return null
         return try {
-            val json = com.google.gson.JsonParser.parseString(errorBody).asJsonObject
-            json.get("error")?.asString
+            val json = org.json.JSONObject(errorBody)
+            if (json.has("error")) json.getString("error")
+            else if (json.has("message")) json.getString("message")
+            else null
         } catch (e: Exception) {
             null
         }

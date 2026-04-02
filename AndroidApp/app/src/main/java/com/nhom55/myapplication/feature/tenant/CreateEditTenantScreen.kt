@@ -141,6 +141,7 @@ fun CreateEditTenantScreen(
                                 email = email.trim().ifBlank { null },
                                 onSuccess = {
                                     Toast.makeText(context, "Cập nhật thành công", Toast.LENGTH_SHORT).show()
+                                    navController.previousBackStackEntry?.savedStateHandle?.set("refresh", true)
                                     navController.navigateUp()
                                 },
                                 onError = { msg ->
@@ -155,6 +156,7 @@ fun CreateEditTenantScreen(
                                 email = email.trim().ifBlank { null },
                                 onSuccess = {
                                     Toast.makeText(context, "Thêm khách thuê thành công", Toast.LENGTH_SHORT).show()
+                                    navController.previousBackStackEntry?.savedStateHandle?.set("refresh", true)
                                     navController.navigateUp()
                                 },
                                 onError = { msg ->

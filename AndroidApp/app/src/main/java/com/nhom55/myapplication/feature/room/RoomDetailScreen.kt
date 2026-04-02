@@ -9,6 +9,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -271,6 +272,7 @@ fun RoomDetailContent(
                                 try {
                                     RetrofitInstance.api.deleteRoom(room.id.toInt())
                                     Toast.makeText(context, "Xóa phòng thành công", Toast.LENGTH_SHORT).show()
+                                    navController.previousBackStackEntry?.savedStateHandle?.set("refresh", true)
                                     navController.popBackStack()
                                 } catch (e: Exception) {
                                     Toast.makeText(context, "Lỗi khi xóa: ${e.message}", Toast.LENGTH_SHORT).show()
