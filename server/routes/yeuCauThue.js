@@ -188,7 +188,7 @@ router.get('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
   }
 });
 
-// ✅ PUT /api/yeuCauThue/:id_yeu_cau/duyet - Chủ trọ DUYỆT yêu cầu → Tạo hợp đồng + phòng → Đã thuê
+// PUT /api/yeuCauThue/:id_yeu_cau/duyet - Chủ trọ DUYỆT yêu cầu → Tạo hợp đồng + phòng → Đã thuê
 router.put('/:id_yeu_cau/duyet', verifyToken, requireChuTroOrAdmin, async (req, res) => {
   try {
     const yeuCau = await YeuCauThue.findByPk(req.params.id_yeu_cau, {
