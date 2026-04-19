@@ -49,6 +49,21 @@ export async function register(payload: RegisterPayload): Promise<RegisterRespon
   });
 }
 
+export async function verifyEmail(token: string): Promise<{ message: string; user?: User }> {
+  return fetchJson<{ message: string; user?: User }>(`${BASE_URL}/auth/verify-email/${token}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
+export async function resendVerificationEmail(email: string): Promise<{ message: string }> {
+  return fetchJson<{ message: string }>(`${BASE_URL}/auth/resend-verification`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+}
+
 export async function getCurrentUser(): Promise<User> {
   const response = await fetchJson<{ message: string; user: User }>(`${BASE_URL}/auth/me`, {
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
@@ -113,6 +128,26 @@ export async function deleteRoom(id: number): Promise<any> {
 export async function fetchRoomImages(roomId: number): Promise<RoomImage[]> {
   return fetchJson<RoomImage[]>(`${BASE_URL}/hinhAnh/phong/${roomId}`, {
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+  });
+}
+
+export async function uploadRoomImage(roomId: number, file: File): Promise<any> {
+  const formData = new FormData();
+  formData.append('image', file);
+  return fetchJson<any>(`${BASE_URL}/hinhAnh/phong/${roomId}`, {
+    method: 'POST',
+    headers: { ...getAuthHeaders() },
+    body: formData
+  });
+}
+
+export async function uploadRoomImages(roomId: number, files: File[]): Promise<any> {
+  const formData = new FormData();
+  files.forEach((file) => formData.append('images', file));
+  return fetchJson<any>(`${BASE_URL}/hinhAnh/phong/${roomId}/multiple`, {
+    method: 'POST',
+    headers: { ...getAuthHeaders() },
+    body: formData
   });
 }
 

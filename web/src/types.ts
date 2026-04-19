@@ -6,6 +6,8 @@ export type UserProfile = {
   so_dien_thoai?: string;
   dia_chi?: string;
   cccd?: string;
+  email_verified?: boolean;
+  phone_verified?: boolean;
 };
 
 export type User = {

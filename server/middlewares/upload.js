@@ -49,7 +49,7 @@ const upload = multer({
 export const handleUploadError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'File quá lớn. Kích thước tối đa là 5MB' });
+      return res.status(400).json({ error: 'File quá lớn. Kích thước tối đa là 10MB' });
     }
     if (err.code === 'LIMIT_FILE_COUNT') {
       return res.status(400).json({ error: 'Quá nhiều file. Tối đa 10 ảnh mỗi lần upload' });

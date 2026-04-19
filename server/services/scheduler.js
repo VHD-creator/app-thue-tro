@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import { Op } from 'sequelize';
 import { HoaDon, HopDong, NguoiThue, Phong } from '../models/quanHe.js';
 import { guiNhacNhoThanhToan } from './emailService.js';
 

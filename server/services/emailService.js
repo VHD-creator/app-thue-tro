@@ -59,4 +59,31 @@ export const guiThongBaoQuaHan = async (email, tenNguoiThue, soTien) => {
   }
 };
 
+export const guiEmailXacThuc = async (email, hoTen, verifyUrl) => {
+  if (!email || !verifyUrl) return;
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: '[Xác thực email] Hoàn tất đăng ký chủ trọ',
+    html: `
+      <h3>Xin chào ${hoTen || 'Chủ trọ'},</h3>
+      <p>Cảm ơn bạn đã đăng ký làm chủ trọ trên hệ thống.</p>
+      <p>Vui lòng bấm vào đường dẫn bên dưới để xác thực email và hoàn tất kích hoạt tài khoản:</p>
+      <p><a href="${verifyUrl}" target="_blank">Xác thực email</a></p>
+      <p>Nếu đường dẫn không hoạt động, sao chép và dán vào trình duyệt của bạn:</p>
+      <p>${verifyUrl}</p>
+      <br/>
+      <p>Trân trọng,<br/>Đội ngũ Quản lý Phòng trọ</p>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`📧 Đã gửi email xác thực tới ${email}`);
+  } catch (error) {
+    console.error('❌ Lỗi gửi email xác thực:', error.message);
+  }
+};
+
 export default transporter;

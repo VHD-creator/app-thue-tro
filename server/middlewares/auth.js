@@ -116,6 +116,36 @@ export const requireChuTroOrAdmin = async (req, res, next) => {
   }
 };
 
+// ==================== REQUIRE CHU_TRO ĐÃ XÁC THỰC EMAIL + SĐT ====================
+export const requireChuTroVerified = async (req, res, next) => {
+  try {
+    if (!req.user || !req.userRole) {
+      return res.status(401).json({ error: 'Vui lòng đăng nhập' });
+    }
+
+    if (req.userRole === 'ADMIN') return next();
+    if (req.userRole !== 'CHU_TRO') {
+      return res.status(403).json({ error: 'Chỉ chủ trọ mới có quyền truy cập' });
+    }
+
+    const chuTro = await ChuTro.findOne({ where: { id_tai_khoan: req.userId } });
+    if (!chuTro) {
+      return res.status(404).json({ error: 'Không tìm thấy thông tin chủ trọ' });
+    }
+
+    if (!chuTro.email_verified || !chuTro.phone_verified) {
+      return res.status(403).json({
+        error: 'Bạn cần xác thực email và số điện thoại để thực hiện thao tác này'
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Middleware requireChuTroVerified error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // ==================== REQUIRE AUTHENTICATED (bất kỳ vai trò nào) ====================
 export const requireAuthenticated = async (req, res, next) => {
   try {

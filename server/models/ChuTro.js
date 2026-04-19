@@ -14,9 +14,33 @@ const ChuTro = sequelize.define('ChuTro', {
   so_dien_thoai: {
     type: DataTypes.STRING(15)
   },
+  phone_verified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  phone_verification_code: {
+    type: DataTypes.STRING(10),
+    allowNull: true
+  },
+  phone_verification_expiry: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
   email: {
     type: DataTypes.STRING(100),
     unique: true
+  },
+  email_verified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  verification_token: {
+    type: DataTypes.STRING(100),
+    allowNull: true
+  },
+  verification_token_expiry: {
+    type: DataTypes.DATE,
+    allowNull: true
   },
   dia_chi: {
     type: DataTypes.STRING(255)

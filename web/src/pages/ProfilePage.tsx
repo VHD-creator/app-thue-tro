@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { changePassword, fetchProfile, updateProfile } from '../api/api';
+import { changePassword, fetchProfile, updateProfile, resendVerificationEmail } from '../api/api';
 import { ProfileUpdatePayload, User } from '../types';
 
 type Props = {
@@ -23,6 +23,7 @@ export default function ProfilePage({ user, onUpdateUser }: Props) {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -93,6 +94,19 @@ export default function ProfilePage({ user, onUpdateUser }: Props) {
     }
   }
 
+  async function handleResendVerification() {
+    setResendLoading(true);
+    try {
+      const response = await resendVerificationEmail(profile.email || email);
+      setSuccess(response.message || 'Email xác thực đã được gửi lại. Vui lòng kiểm tra inbox.');
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không thể gửi lại email xác thực');
+    } finally {
+      setResendLoading(false);
+    }
+  }
+
   return (
     <div>
       <div className="section-title">
@@ -113,6 +127,55 @@ export default function ProfilePage({ user, onUpdateUser }: Props) {
               <strong>Vai trò:</strong> {user.vai_tro}
             </p>
           </div>
+
+          {/* ✅ Verification Status for CHU_TRO */}
+          {user.vai_tro === 'CHU_TRO' && (
+            <div style={{ 
+              padding: '16px',
+              marginBottom: '20px',
+              backgroundColor: profile.email_verified && profile.phone_verified ? '#ecfdf5' : '#fef3c7',
+              border: `1px solid ${profile.email_verified && profile.phone_verified ? '#6ee7b7' : '#fcd34d'}`,
+              borderRadius: '8px'
+            }}>
+              <p style={{ marginBottom: '12px', fontWeight: 'bold' }}>
+                {profile.email_verified && profile.phone_verified ? '✅ Tài khoản đã xác thực' : '⚠️ Tài khoản chưa xác thực'}
+              </p>
+              
+              <div style={{ display: 'grid', gap: '8px', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>{profile.email_verified ? '✅' : '❌'}</span>
+                  <span>Email xác thực: {profile.email_verified ? 'Đã xác thực' : 'Chưa xác thực'}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>{profile.phone_verified ? '✅' : '❌'}</span>
+                  <span>SĐT xác thực: {profile.phone_verified ? 'Đã xác thực' : 'Chưa xác thực'}</span>
+                </div>
+              </div>
+
+              {!profile.email_verified && (
+                <div style={{ 
+                  padding: '12px', 
+                  backgroundColor: '#fff7ed',
+                  border: '1px solid #fed7aa',
+                  borderRadius: '6px',
+                  marginTop: '12px',
+                  fontSize: '14px'
+                }}>
+                  <p style={{ margin: '0 0 8px 0' }}>📧 Bạn cần xác thực email để tạo phòng trọ.</p>
+                  <button 
+                    className="button button-primary"
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={resendLoading}
+                    style={{ fontSize: '14px', padding: '8px 12px', marginTop: '8px' }}
+                  >
+                    {resendLoading ? 'Đang gửi...' : '📨 Gửi lại email xác thực'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16 }}>
             <div>
               <label htmlFor="hoTen">Họ và tên</label>
@@ -195,3 +258,4 @@ export default function ProfilePage({ user, onUpdateUser }: Props) {
     </div>
   );
 }
+        

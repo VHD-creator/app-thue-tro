@@ -3,22 +3,24 @@ import { Phong, ChuTro } from '../models/quanHe.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// ✅ Lấy data phòng từ DB
+// ✅ Lấy data phòng từ DB (chỉ limit 20 phòng để tối ưu)
 const getContextData = async () => {
   const phongs = await Phong.findAll({
+    where: { trang_thai: 0 }, // Chỉ lấy phòng trống
+    limit: 20,
+    order: [['gia_phong', 'ASC']],
     include: [{
       model: ChuTro,
       as: 'ChuTro',
       attributes: ['ho_ten', 'so_dien_thoai', 'email', 'dia_chi']
-    }],
-    order: [['gia_phong', 'ASC']]
+    }]
   });
 
   return phongs.map(p => ({
     id: p.id_phong,
     ten_phong: p.ten_phong,
     gia_phong: `${Number(p.gia_phong).toLocaleString('vi-VN')} VND`,
-    trang_thai: p.trang_thai === 0 ? 'Còn trống' : 'Đã thuê',
+    trang_thai: 'Còn trống',
     mo_ta: p.mo_ta || 'Không có mô tả',
     chu_tro: p.ChuTro ? {
       ho_ten: p.ChuTro.ho_ten,
@@ -37,7 +39,7 @@ export const processMessageGemini = async (message, chatHistory = []) => {
 
     const systemPrompt = `Bạn là chatbot hỗ trợ tìm phòng trọ, trả lời bằng tiếng Việt, ngắn gọn và thân thiện.
 
-Dữ liệu phòng hiện tại trong hệ thống:
+Dữ liệu phòng hiện tại trong hệ thống (20 phòng trống đầu tiên):
 ${JSON.stringify(phongData, null, 2)}
 
 Quy tắc:

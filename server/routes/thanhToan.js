@@ -2,6 +2,7 @@ import express from 'express';
 import ThanhToan from '../models/ThanhToan.js';
 import HoaDon from '../models/HoaDon.js';
 import Phong from '../models/Phong.js';
+import ChuTro from '../models/ChuTro.js';
 import {
   verifyToken,
   requireChuTroOrAdmin,
@@ -97,20 +98,34 @@ router.post('/', verifyToken, requireAuthenticated, async (req, res) => {
 
     if (!validatePaymentMethod(hinh_thuc)) {
       return res.status(400).json({
-        error: 'hinh_thuc phải là một trong: tiền mặt, chuyển khoản, thẻ tín dụng, ví điện tử'
+        error: 'hinh_thuc phải là một trong: tiền mặt, VietQR - Chuyển khoản'
       });
     }
 
     // Check if bill exists
-    const hoaDon = await HoaDon.findByPk(id_hoa_don);
+    const hoaDon = await HoaDon.findByPk(id_hoa_don, {
+      include: [{ model: Phong, as: 'Phong', attributes: ['id_chu_tro'] }]
+    });
     if (!hoaDon) {
       return res.status(404).json({ error: 'Hóa đơn không tồn tại' });
     }
 
-    // Kiểm tra số tiền thanh toán
-    if (parseFloat(so_tien) > parseFloat(hoaDon.tong_tien)) {
+    // ✅ Kiểm tra người thanh toán có phải chủ trọ sở hữu hóa đơn này không
+    if (req.userRole === 'CHU_TRO') {
+      const chuTro = await ChuTro.findOne({ where: { id_tai_khoan: req.userId } });
+      if (!chuTro || hoaDon.Phong.id_chu_tro !== chuTro.id_chu_tro) {
+        return res.status(403).json({ error: 'Bạn không có quyền thanh toán hóa đơn này' });
+      }
+    }
+
+    // Lấy tổng thanh toán hiện tại
+    const existingPayments = await ThanhToan.sum('so_tien', { where: { id_hoa_don } });
+    const totalPaid = (existingPayments || 0) + parseFloat(so_tien);
+
+    // Kiểm tra số tiền thanh toán không vượt quá tổng hóa đơn
+    if (totalPaid > parseFloat(hoaDon.tong_tien)) {
       return res.status(400).json({
-        error: `Số tiền thanh toán (${so_tien}) vượt quá tổng tiền hóa đơn (${hoaDon.tong_tien})`
+        error: `Tổng thanh toán (${totalPaid}) vượt quá tổng tiền hóa đơn (${hoaDon.tong_tien})`
       });
     }
 
@@ -122,16 +137,22 @@ router.post('/', verifyToken, requireAuthenticated, async (req, res) => {
       ngay_thanh_toan: new Date()
     });
 
-    // Update bill status
-    // If cash, set to PENDING (2), otherwise set to PAID (1)
-    const newStatus = hinh_thuc === 'tiền mặt' ? 2 : 1;
+    // ✅ Chỉ đánh PAID nếu đã thanh toán đủ tổng tiền
+    let newStatus = 0; // Chưa thanh toán
+    if (totalPaid >= parseFloat(hoaDon.tong_tien)) {
+      newStatus = 1; // Đã thanh toán đủ
+    }
     await hoaDon.update({ trang_thai: newStatus });
 
     res.status(201).json({
-      message: hinh_thuc === 'tiền mặt' 
-        ? 'Ghi nhận yêu cầu thanh toán tiền mặt thành công. Chờ chủ trọ xác nhận.' 
-        : 'Ghi nhận thanh toán thành công',
-      data: thanhToan
+      message: 'Ghi nhận thanh toán thành công',
+      data: thanhToan,
+      payment_info: {
+        so_tien_thanh_toan: so_tien,
+        tong_da_thanh_toan: totalPaid,
+        tong_tien_hoa_don: hoaDon.tong_tien,
+        trang_thai: totalPaid >= parseFloat(hoaDon.tong_tien) ? 'Đã thanh toán đủ' : 'Chưa thanh toán đủ'
+      }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

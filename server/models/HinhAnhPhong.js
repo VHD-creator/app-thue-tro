@@ -48,6 +48,12 @@ const HinhAnhPhong = sequelize.define('HinhAnhPhong', {
     type: DataTypes.INTEGER,
     comment: 'Kích thước file (bytes)'
   },
+  file_hash: {
+    type: DataTypes.STRING(128),
+    allowNull: false,
+    unique: false,
+    comment: 'SHA-256 hash của file ảnh để phát hiện trùng lặp'
+  },
   ngay_upload: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

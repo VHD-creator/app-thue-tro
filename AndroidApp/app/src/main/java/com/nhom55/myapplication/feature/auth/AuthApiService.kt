@@ -3,6 +3,7 @@ package com.nhom55.myapplication.feature.auth
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Path
 
 data class RegisterRequest(
     val ten_dang_nhap: String,
@@ -43,21 +44,34 @@ data class ChangePasswordResponse(
     val message: String
 )
 
+data class VerifyEmailRequest(
+    val email: String
+)
+
+data class ResendVerificationResponse(
+    val message: String
+)
+
 data class UserData(
     val id_tai_khoan: Int,
     val ten_dang_nhap: String,
     val vai_tro: String,
+    val trang_thai: Int = 1,
     val chu_tro: ProfileData? = null,
     val nguoi_thue: ProfileData? = null,
     val profile: ProfileData? = null
 )
 
 data class ProfileData(
+    val id_chu_tro: Int? = null,
+    val id_nguoi_thue: Int? = null,
     val ho_ten: String,
     val email: String,
     val so_dien_thoai: String? = null,
     val cccd: String? = null,
-    val dia_chi: String? = null
+    val dia_chi: String? = null,
+    val email_verified: Boolean = false,
+    val phone_verified: Boolean = false
 )
 
 interface AuthApiService {
@@ -72,4 +86,10 @@ interface AuthApiService {
 
     @POST("api/auth/change-password")
     suspend fun changePassword(@Body request: ChangePasswordRequest): ChangePasswordResponse
+
+    @GET("api/auth/verify-email/{token}")
+    suspend fun verifyEmail(@Path("token") token: String): GetMeResponse
+
+    @POST("api/auth/resend-verification")
+    suspend fun resendVerification(@Body request: VerifyEmailRequest): ResendVerificationResponse
 }

@@ -5,7 +5,7 @@ import cookieParser from 'cookie-parser';
 import logger from 'morgan';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import bodyParser from 'body-parser';
+
 import cors from 'cors';
 
 // ✅ database.js đã tự gọi dotenv.config() bên trong
@@ -44,12 +44,10 @@ sequelize.authenticate()
 
 app.use(logger('dev'));
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
 
 // ==================== ROUTES ====================
 app.use('/api/phong', phongRouter);

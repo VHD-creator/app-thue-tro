@@ -1,11 +1,13 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { HinhAnhPhong, Phong } from '../models/quanHe.js';
 import {
   verifyToken,
   requireChuTroOrAdmin,
+  requireChuTroVerified,
   checkPhongOwnership
 } from '../middlewares/auth.js';
 import {
@@ -60,6 +62,7 @@ router.get('/:id_hinh_anh', async (req, res) => {
 router.post('/phong/:id_phong',
   verifyToken,
   requireChuTroOrAdmin,
+  requireChuTroVerified,
   checkPhongOwnership,
   uploadSingle,
   handleUploadError,
@@ -78,6 +81,21 @@ router.post('/phong/:id_phong',
         return res.status(404).json({ error: 'Phòng không tồn tại' });
       }
 
+      const fileBuffer = fs.readFileSync(req.file.path);
+      const file_hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+
+      const duplicateImage = await HinhAnhPhong.findOne({
+        where: { file_hash },
+        include: [{ model: Phong, as: 'Phong', attributes: ['id_chu_tro'] }]
+      });
+
+      if (duplicateImage && duplicateImage.Phong && duplicateImage.Phong.id_chu_tro !== phong.id_chu_tro) {
+        fs.unlinkSync(req.file.path);
+        return res.status(409).json({
+          error: 'Ảnh này đã được chủ trọ khác sử dụng. Vui lòng chọn ảnh khác.'
+        });
+      }
+
       const isAnhDaiDien = la_anh_dai_dien === 'true' || la_anh_dai_dien === true;
 
       if (isAnhDaiDien) {
@@ -94,7 +112,8 @@ router.post('/phong/:id_phong',
         la_anh_dai_dien: isAnhDaiDien,
         thu_tu: thu_tu || 0,
         mo_ta: mo_ta || '',
-        kich_thuoc: req.file.size
+        kich_thuoc: req.file.size,
+        file_hash
       });
 
       res.status(201).json({ message: 'Upload ảnh thành công', data: hinhAnh });
@@ -111,6 +130,7 @@ router.post('/phong/:id_phong',
 router.post('/phong/:id_phong/multiple',
   verifyToken,
   requireChuTroOrAdmin,
+  requireChuTroVerified,
   checkPhongOwnership,
   uploadMultiple,
   handleUploadError,
@@ -128,6 +148,30 @@ router.post('/phong/:id_phong/multiple',
         return res.status(404).json({ error: 'Phòng không tồn tại' });
       }
 
+      const duplicateCheck = [];
+      for (const file of req.files) {
+        const fileBuffer = fs.readFileSync(file.path);
+        const file_hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+
+        const duplicateImage = await HinhAnhPhong.findOne({
+          where: { file_hash },
+          include: [{ model: Phong, as: 'Phong', attributes: ['id_chu_tro'] }]
+        });
+
+        if (duplicateImage && duplicateImage.Phong && duplicateImage.Phong.id_chu_tro !== phong.id_chu_tro) {
+          duplicateCheck.push(file.originalname);
+        }
+
+        file.file_hash = file_hash;
+      }
+
+      if (duplicateCheck.length > 0) {
+        req.files.forEach(file => fs.existsSync(file.path) && fs.unlinkSync(file.path));
+        return res.status(409).json({
+          error: 'Một hoặc nhiều ảnh đã được chủ trọ khác sử dụng: ' + duplicateCheck.join(', ')
+        });
+      }
+
       // Bỏ ảnh đại diện cũ vì ảnh đầu tiên sẽ là đại diện
       await HinhAnhPhong.update({ la_anh_dai_dien: false }, { where: { id_phong } });
 
@@ -138,7 +182,8 @@ router.post('/phong/:id_phong/multiple',
         loai_hinh: 'khac',
         la_anh_dai_dien: i === 0,
         thu_tu: i,
-        kich_thuoc: file.size
+        kich_thuoc: file.size,
+        file_hash: file.file_hash
       }));
 
       const created = await HinhAnhPhong.bulkCreate(hinhAnhs);

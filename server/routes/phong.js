@@ -4,7 +4,8 @@ import { Op } from 'sequelize';
 import { Phong, ChuTro, HoaDon, HopDong, NguoiThue, TaiKhoan } from '../models/quanHe.js';
 import { 
   verifyToken,
-  requireChuTroOrAdmin, 
+  requireChuTroOrAdmin,
+  requireChuTroVerified,
   checkPhongOwnership,
   optionalAuth
 } from '../middlewares/auth.js';
@@ -177,7 +178,7 @@ router.get('/:id_phong', async (req, res) => {
 });
 
 // POST /api/phong - Tạo phòng mới
-router.post('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
+router.post('/', verifyToken, requireChuTroOrAdmin, requireChuTroVerified, async (req, res) => {
   try {
     const { id_chu_tro, ten_phong, gia_phong, mo_ta } = req.body;
 

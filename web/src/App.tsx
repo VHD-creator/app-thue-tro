@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import VerificationPage from './pages/VerificationPage';
 import DashboardPage from './pages/DashboardPage';
 import RoomListPage from './pages/RoomListPage';
 import RoomFormPage from './pages/RoomFormPage';
@@ -94,6 +95,7 @@ function App() {
           <Routes>
             <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <LoginPage onLogin={auth.login} />} />
             <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <RegisterPage />} />
+            <Route path="/verify-email/:token" element={<VerificationPage />} />
             <Route path="/dashboard" element={user ? <DashboardPage /> : <Navigate to="/login" />} />
             <Route path="/rooms" element={user ? <RoomListPage /> : <Navigate to="/login" />} />
             <Route path="/rooms/new" element={user ? <RoomFormPage user={user} /> : <Navigate to="/login" />} />
