@@ -20,6 +20,7 @@ router.get('/thongKe', verifyToken, requireChuTroOrAdmin, async (req, res) => {
     const tongPhong = await Phong.count({ where: phongFilter });
     const phongTrong = await Phong.count({ where: { ...phongFilter, trang_thai: 0 } });
     const phongDangThue = await Phong.count({ where: { ...phongFilter, trang_thai: 1 } });
+    const phongChoDuyet = await Phong.count({ where: { ...phongFilter, trang_thai: 2 } });
 
     // Lấy danh sách id phòng để filter hóa đơn
     if (req.userRole === 'CHU_TRO' && req.idChuTro) {
@@ -57,6 +58,7 @@ router.get('/thongKe', verifyToken, requireChuTroOrAdmin, async (req, res) => {
         tong: tongPhong,
         trong: phongTrong,
         dang_thue: phongDangThue,
+        cho_duyet: phongChoDuyet,
         ty_le_lap_day: tongPhong > 0 ? Math.round((phongDangThue / tongPhong) * 100) : 0
       },
       hoa_don: {
@@ -93,6 +95,7 @@ router.get('/tongHop', verifyToken, requireChuTroOrAdmin, async (req, res) => {
     const tongPhong = await Phong.count({ where: phongFilter });
     const phongTrong = await Phong.count({ where: { ...phongFilter, trang_thai: 0 } });
     const phongChoThue = await Phong.count({ where: { ...phongFilter, trang_thai: 1 } });
+    const phongChoDuyet = await Phong.count({ where: { ...phongFilter, trang_thai: 2 } });
     const tongHoaDon = await HoaDon.count({ where: hoaDonFilter });
     const hoaDonChuaThanhtoan = await HoaDon.count({ where: { ...hoaDonFilter, trang_thai: 0 } });
     const hoaDonDaThanhtoan = await HoaDon.count({ where: { ...hoaDonFilter, trang_thai: 1 } });
@@ -110,7 +113,7 @@ router.get('/tongHop', verifyToken, requireChuTroOrAdmin, async (req, res) => {
     }, 0);
 
     res.json({
-      phong: { tong: tongPhong, trong: phongTrong, choThue: phongChoThue },
+      phong: { tong: tongPhong, trong: phongTrong, choThue: phongChoThue, choDuyet: phongChoDuyet },
       hoaDon: { tong: tongHoaDon, chuaThanhtoan: hoaDonChuaThanhtoan, daThanhtoan: hoaDonDaThanhtoan },
       doanhThu: tongDoanhThu,
       tongThanhToan: thanhToans.length

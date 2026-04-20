@@ -123,6 +123,11 @@ fun DashboardScreen(
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                         contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                     )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     StatCard(
                         modifier = Modifier.weight(1f),
                         label = "Còn trống",
@@ -130,6 +135,14 @@ fun DashboardScreen(
                         icon = Icons.Default.Info,
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        label = "Chờ cọc",
+                        value = stats.phong.choDuyet.toString(),
+                        icon = Icons.Default.Warning,
+                        containerColor = Color(0xFFFFDBCB), // Một màu cam nhẹ cho "Đợi"
+                        contentColor = Color(0xFF2E1500)
                     )
                 }
 

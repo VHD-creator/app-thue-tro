@@ -130,6 +130,11 @@ fun RoomListScreen(
                             onClick = { viewModel.setFilter(RoomStatus.AVAILABLE) },
                             label = { Text("Còn trống") }
                         )
+                        FilterChip(
+                            selected = selectedFilter == RoomStatus.PENDING,
+                            onClick = { viewModel.setFilter(RoomStatus.PENDING) },
+                            label = { Text("Chờ cọc") }
+                        )
                     }
 
                     LazyColumn(

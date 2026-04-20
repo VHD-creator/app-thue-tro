@@ -1,8 +1,6 @@
 import express from 'express';
-import ThanhToan from '../models/ThanhToan.js';
-import HoaDon from '../models/HoaDon.js';
-import Phong from '../models/Phong.js';
-import ChuTro from '../models/ChuTro.js';
+import { Op } from 'sequelize';
+import { ThanhToan, HoaDon, Phong, HopDong, ChuTro } from '../models/quanHe.js';
 import {
   verifyToken,
   requireChuTroOrAdmin,
@@ -11,6 +9,28 @@ import {
 import { validateAmount, validatePaymentMethod, validateDate } from '../utils/validators.js';
 
 const router = express.Router();
+
+// Helper: Kiểm tra và kích hoạt hợp đồng/phòng nếu đã đóng cọc
+const checkAndActivateContract = async (id_hop_dong) => {
+  if (!id_hop_dong) return;
+
+  const hopDong = await HopDong.findByPk(id_hop_dong);
+  if (!hopDong || hopDong.trang_thai !== 2) return;
+
+  // Kiểm tra xem tất cả các hóa đơn tiền cọc/đầu tiên của hợp đồng này đã thanh toán chưa
+  const pendingInvoices = await HoaDon.count({
+    where: {
+      id_hop_dong,
+      trang_thai: { [Op.ne]: 1 } // != 1 (Chưa thanh toán hoặc còn nợ)
+    }
+  });
+
+  // Nếu không còn hóa đơn nào chưa thanh toán -> Kích hoạt
+  if (pendingInvoices === 0) {
+    await hopDong.update({ trang_thai: 1 });
+    await Phong.update({ trang_thai: 1 }, { where: { id_phong: hopDong.id_phong } });
+  }
+};
 
 // GET /api/thanhToan - Danh sách thanh toán
 router.get('/', async (req, res) => {
@@ -144,6 +164,11 @@ router.post('/', verifyToken, requireAuthenticated, async (req, res) => {
     }
     await hoaDon.update({ trang_thai: newStatus });
 
+    // Nếu thanh toán xong hoàn toàn (không phải tiền mặt đang chờ duyệt)
+    if (newStatus === 1 && hoaDon.id_hop_dong) {
+      await checkAndActivateContract(hoaDon.id_hop_dong);
+    }
+
     res.status(201).json({
       message: 'Ghi nhận thanh toán thành công',
       data: thanhToan,
@@ -190,6 +215,12 @@ router.put('/:id_thanh_toan', verifyToken, requireChuTroOrAdmin, async (req, res
     if (ngay_thanh_toan) thanhToan.ngay_thanh_toan = ngay_thanh_toan;
 
     await thanhToan.save();
+
+    // Nếu chủ trọ cập nhật thanh toán và hóa đơn được xem là đã hoàn thành
+    const hoaDon = await HoaDon.findByPk(thanhToan.id_hoa_don);
+    if (hoaDon && hoaDon.trang_thai === 1 && hoaDon.id_hop_dong) {
+      await checkAndActivateContract(hoaDon.id_hop_dong);
+    }
 
     res.json({
       message: 'Cập nhật thanh toán thành công',

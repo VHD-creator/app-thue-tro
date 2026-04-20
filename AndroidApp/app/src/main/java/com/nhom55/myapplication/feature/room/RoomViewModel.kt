@@ -144,6 +144,28 @@ class RoomViewModel : ViewModel() {
         }
     }
 
+    fun bookRoom(roomId: Int, startDate: String, endDate: String, deposit: Long, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val request = CreateYeuCauThueRequest(
+                    id_phong = roomId,
+                    ngay_bat_dau_mong_muon = startDate,
+                    ngay_ket_thuc = endDate,
+                    tien_coc = deposit
+                )
+                val response = RetrofitInstance.yeuCauThueApi.createYeuCauThue(request)
+                loadRooms() // Refresh to show pending status
+                onResult(true, response.message)
+            } catch (e: retrofit2.HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                val message = parseErrorMessage(errorBody) ?: "Lỗi gửi yêu cầu (${e.code()})"
+                onResult(false, message)
+            } catch (e: Exception) {
+                onResult(false, e.message ?: "Lỗi kết nối mạng")
+            }
+        }
+    }
+
     private fun parseErrorMessage(errorBody: String?): String? {
         if (errorBody == null) return null
         return try {

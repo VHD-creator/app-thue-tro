@@ -13,7 +13,8 @@ data class DashboardStats(
 data class PhongStats(
     val tong: Int,
     val trong: Int,
-    val choThue: Int
+    val choThue: Int,
+    val choDuyet: Int
 )
 
 data class HoaDonStats(

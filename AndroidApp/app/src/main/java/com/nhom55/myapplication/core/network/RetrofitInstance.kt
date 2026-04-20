@@ -6,6 +6,7 @@ import com.nhom55.myapplication.feature.invoice.InvoiceApiService
 import com.nhom55.myapplication.feature.payment.PaymentApiService
 import com.nhom55.myapplication.feature.dashboard.ReportApiService
 import com.nhom55.myapplication.feature.room.RoomApiService
+import com.nhom55.myapplication.feature.room.YeuCauThueApiService
 import com.nhom55.myapplication.core.session.SessionManager
 import com.nhom55.myapplication.feature.tenant.TenantApiService
 import com.nhom55.myapplication.feature.admin.UserApiService
@@ -99,5 +100,14 @@ object RetrofitInstance {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(UserApiService::class.java)
+    }
+
+    val yeuCauThueApi: YeuCauThueApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(YeuCauThueApiService::class.java)
     }
 }

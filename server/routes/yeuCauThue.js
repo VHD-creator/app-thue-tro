@@ -1,5 +1,5 @@
 import express from 'express';
-import { YeuCauThue, Phong, NguoiThue, HopDong } from '../models/quanHe.js';
+import { YeuCauThue, Phong, NguoiThue, HopDong, HoaDon } from '../models/quanHe.js';
 import {
   verifyToken,
   requireChuTroOrAdmin,
@@ -19,10 +19,10 @@ router.post('/', verifyToken, requireAuthenticated, async (req, res) => {
       return res.status(403).json({ error: 'Chỉ người thuê mới có thể gửi yêu cầu thuê phòng' });
     }
 
-    const { id_phong, ngay_bat_dau_mong_muon, ghi_chu } = req.body;
+    const { id_phong, ngay_bat_dau_mong_muon, ngay_ket_thuc, tien_coc, ghi_chu } = req.body;
 
-    if (!id_phong || !ngay_bat_dau_mong_muon) {
-      return res.status(400).json({ error: 'Thiếu dữ liệu: id_phong, ngay_bat_dau_mong_muon' });
+    if (!id_phong || !ngay_bat_dau_mong_muon || !tien_coc) {
+      return res.status(400).json({ error: 'Thiếu dữ liệu: id_phong, ngay_bat_dau_mong_muon, tien_coc' });
     }
 
     // Lấy thông tin người thuê từ tài khoản
@@ -54,8 +54,8 @@ router.post('/', verifyToken, requireAuthenticated, async (req, res) => {
     });
 
     if (yeuCauDangCho) {
-      return res.status(400).json({ 
-        error: 'Bạn đang có yêu cầu thuê phòng chờ duyệt. Vui lòng chờ phản hồi trước khi gửi yêu cầu mới.' 
+      return res.status(400).json({
+        error: 'Bạn đang có yêu cầu thuê phòng chờ duyệt. Vui lòng chờ phản hồi trước khi gửi yêu cầu mới.'
       });
     }
 
@@ -79,6 +79,45 @@ router.post('/', verifyToken, requireAuthenticated, async (req, res) => {
 
     // ✅ Cập nhật trạng thái phòng → Chờ duyệt (2)
     await phong.update({ trang_thai: 2 });
+
+    // ✅ Tự động tạo 2 hóa đơn: Tiền cọc và Tiền phòng tháng đầu
+    const HoaDon = (await import('../models/HoaDon.js')).default;
+    const now = new Date();
+    const thangNay = `${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+
+    // 1. Hóa đơn tiền cọc
+    await HoaDon.create({
+      id_phong,
+      thang_nam: thangNay,
+      so_dien_cu: 0,
+      so_dien_moi: 0,
+      so_nuoc_cu: 0,
+      so_nuoc_moi: 0,
+      tien_dien: 0,
+      tien_nuoc: 0,
+      tien_phong: tien_coc,
+      tong_tien: tien_coc,
+      trang_thai: 0, // Chưa thanh toán
+      ngay_tao: now,
+      ghi_chu: `Tiền cọc phòng ${phong.ten_phong}`
+    });
+
+    // 2. Hóa đơn tiền phòng tháng đầu
+    await HoaDon.create({
+      id_phong,
+      thang_nam: thangNay,
+      so_dien_cu: 0,
+      so_dien_moi: 0,
+      so_nuoc_cu: 0,
+      so_nuoc_moi: 0,
+      tien_dien: 0,
+      tien_nuoc: 0,
+      tien_phong: phong.gia_phong,
+      tong_tien: phong.gia_phong,
+      trang_thai: 0, // Chưa thanh toán
+      ngay_tao: now,
+      ghi_chu: `Tiền phòng tháng đầu tiên - ${phong.ten_phong}`
+    });
 
     res.status(201).json({
       message: 'Gửi yêu cầu thuê phòng thành công! Vui lòng chờ chủ trọ xác nhận.',
@@ -224,14 +263,26 @@ router.put('/:id_yeu_cau/duyet', verifyToken, requireChuTroOrAdmin, async (req, 
       ngay_bat_dau: yeuCau.ngay_bat_dau_mong_muon,
       ngay_ket_thuc: new Date(ngay_ket_thuc),
       tien_coc,
-      trang_thai: 1
+      trang_thai: 2 // Chờ cọc/thanh toán
     });
 
     // ✅ Cập nhật yêu cầu → Đã duyệt
     await yeuCau.update({ trang_thai: 1, ngay_xu_ly: new Date() });
 
-    // ✅ Cập nhật trạng thái phòng → Đã thuê (1)
-    await Phong.update({ trang_thai: 1 }, { where: { id_phong: yeuCau.id_phong } });
+    // ✅ Cập nhật trạng thái phòng → Chờ duyệt cọc (2)
+    await Phong.update({ trang_thai: 2 }, { where: { id_phong: yeuCau.id_phong } });
+
+    // ✅ Liên kết các hóa đơn (Tiền cọc & Tiền tháng đầu) với hợp đồng vừa tạo
+    await HoaDon.update(
+      { id_hop_dong: hopDong.id_hop_dong },
+      { 
+        where: { 
+          id_phong: yeuCau.id_phong, 
+          id_hop_dong: null,
+          trang_thai: 0 // Chỉ hóa đơn chưa thanh toán
+        } 
+      }
+    );
 
     res.json({
       message: 'Duyệt yêu cầu thành công! Hợp đồng đã được tạo.',

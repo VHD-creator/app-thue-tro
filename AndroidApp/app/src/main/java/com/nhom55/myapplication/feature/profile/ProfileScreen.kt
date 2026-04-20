@@ -134,6 +134,15 @@ fun ProfileScreen(
                         }
                         
                         Spacer(modifier = Modifier.weight(1f))
+
+                        Button(
+                            onClick = {/*TODO Chỉnh sửa thông tin cá nhân*/ },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+
+                        ) {
+                            Text("Chỉnh sửa thông tin")
+                        }
                         
                         Button(
                             onClick = { showPasswordDialog = true },

@@ -1,5 +1,5 @@
 import express from 'express';
-import { HopDong, Phong, NguoiThue, ChuTro } from '../models/quanHe.js';
+import { HopDong, Phong, NguoiThue, ChuTro, HoaDon } from '../models/quanHe.js';
 import { 
   verifyToken,
   requireChuTroOrAdmin, 
@@ -140,10 +140,50 @@ router.post('/', verifyToken, requireAuthenticated, async (req, res) => {
       ngay_bat_dau: formatForMySQL(ngay_bat_dau),
       ngay_ket_thuc: formatForMySQL(ngay_ket_thuc),
       tien_coc,
-      trang_thai: 1
+      trang_thai: 2 // 2: Chờ cọc/thanh toán
     });
 
-    await phong.update({ trang_thai: 1 });
+    await phong.update({ trang_thai: 2 }); // 2: Chờ cọc/duyệt
+
+    // ✅ Tự động tạo 2 hóa đơn: Tiền cọc và Tiền phòng tháng đầu
+    const now = new Date();
+    const thangNay = `${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+
+    // 1. Hóa đơn tiền cọc
+    await HoaDon.create({
+      id_phong,
+      id_hop_dong: hopDong.id_hop_dong,
+      thang_nam: thangNay,
+      so_dien_cu: 0,
+      so_dien_moi: 0,
+      so_nuoc_cu: 0,
+      so_nuoc_moi: 0,
+      tien_dien: 0,
+      tien_nuoc: 0,
+      tien_phong: tien_coc,
+      tong_tien: tien_coc,
+      trang_thai: 0, // Chưa thanh toán
+      ngay_tao: now,
+      ghi_chu: `Tiền cọc phòng ${phong.ten_phong}`
+    });
+
+    // 2. Hóa đơn tiền phòng tháng đầu
+    await HoaDon.create({
+      id_phong,
+      id_hop_dong: hopDong.id_hop_dong,
+      thang_nam: thangNay,
+      so_dien_cu: 0,
+      so_dien_moi: 0,
+      so_nuoc_cu: 0,
+      so_nuoc_moi: 0,
+      tien_dien: 0,
+      tien_nuoc: 0,
+      tien_phong: phong.gia_phong,
+      tong_tien: phong.gia_phong,
+      trang_thai: 0, // Chưa thanh toán
+      ngay_tao: now,
+      ghi_chu: `Tiền phòng tháng đầu tiên - ${phong.ten_phong}`
+    });
 
     res.status(201).json({ message: 'Tạo hợp đồng thành công', data: hopDong });
   } catch (error) {

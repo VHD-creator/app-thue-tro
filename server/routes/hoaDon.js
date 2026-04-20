@@ -193,6 +193,22 @@ router.put('/:id_hoa_don', verifyToken, requireChuTroOrAdmin, async (req, res) =
     hoaDon.tong_tien = Number(hoaDon.tien_dien || 0) + Number(hoaDon.tien_nuoc || 0) + Number(hoaDon.tien_phong || 0);
 
     await hoaDon.save();
+
+    // ✅ Nếu hóa đơn được chuyển sang "Đã thanh toán" (1)
+    if (trang_thai === 1 && hoaDon.id_hop_dong) {
+      const hopDong = await HopDong.findByPk(hoaDon.id_hop_dong);
+      if (hopDong && hopDong.trang_thai === 2) {
+        // Kiểm tra xem tất cả các hóa đơn của hợp đồng này đã trả hết chưa
+        const pendingBills = await HoaDon.count({ 
+          where: { id_hop_dong: hoaDon.id_hop_dong, trang_thai: { [Op.ne]: 1 } } 
+        });
+        if (pendingBills === 0) {
+          await hopDong.update({ trang_thai: 1 });
+          await Phong.update({ trang_thai: 1 }, { where: { id_phong: hopDong.id_phong } });
+        }
+      }
+    }
+
     res.json({ message: 'Cập nhật hóa đơn thành công', data: hoaDon });
   } catch (error) {
     res.status(500).json({ error: error.message });
