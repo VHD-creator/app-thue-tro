@@ -16,6 +16,10 @@ export default function VerificationPage() {
     }
 
     async function verify() {
+      if (!token) {
+        return;
+      }
+
       try {
         const response = await verifyEmail(token);
         setStatus('success');

@@ -21,6 +21,7 @@ import UserManagementPage from './pages/UserManagementPage';
 import ProfilePage from './pages/ProfilePage';
 import SideNav from './components/SideNav';
 import TopBar from './components/TopBar';
+import ChatbotWidget from './components/ChatbotWidget';
 import { User } from './types';
 import { getCurrentUser } from './api/api';
 
@@ -73,17 +74,25 @@ function App() {
   );
 
   const navRoutes = user
-    ? [
-        { path: '/dashboard', label: 'Dashboard' },
-        { path: '/rooms', label: 'Phòng trọ' },
-        { path: '/contracts', label: 'Hợp đồng' },
-        { path: '/invoices', label: 'Hóa đơn' },
-        ...(user.vai_tro === 'CHU_TRO' || user.vai_tro === 'ADMIN'
-          ? [{ path: '/tenants', label: 'Người thuê' }]
-          : []),
-        ...(user.vai_tro === 'ADMIN' ? [{ path: '/users', label: 'Tài khoản' }] : []),
-        { path: '/profile', label: 'Hồ sơ' }
-      ]
+    ? user.vai_tro === 'NGUOI_THUE'
+      ? [
+          { path: '/tenant/dashboard', label: 'Dashboard' },
+          { path: '/tenant/rooms', label: 'Phòng trọ' },
+          { path: '/tenant/contracts', label: 'Hợp đồng' },
+          { path: '/tenant/invoices', label: 'Hóa đơn' },
+          { path: '/tenant/profile', label: 'Hồ sơ' }
+        ]
+      : [
+          { path: '/dashboard', label: 'Dashboard' },
+          { path: '/rooms', label: 'Phòng trọ' },
+          { path: '/contracts', label: 'Hợp đồng' },
+          { path: '/invoices', label: 'Hóa đơn' },
+          ...(user.vai_tro === 'CHU_TRO' || user.vai_tro === 'ADMIN'
+            ? [{ path: '/tenants', label: 'Người thuê' }]
+            : []),
+          ...(user.vai_tro === 'ADMIN' ? [{ path: '/users', label: 'Tài khoản' }] : []),
+          { path: '/profile', label: 'Hồ sơ' }
+        ]
     : [];
 
   return (
@@ -96,30 +105,41 @@ function App() {
             <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <LoginPage onLogin={auth.login} />} />
             <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <RegisterPage />} />
             <Route path="/verify-email/:token" element={<VerificationPage />} />
-            <Route path="/dashboard" element={user ? <DashboardPage /> : <Navigate to="/login" />} />
-            <Route path="/rooms" element={user ? <RoomListPage /> : <Navigate to="/login" />} />
-            <Route path="/rooms/new" element={user ? <RoomFormPage user={user} /> : <Navigate to="/login" />} />
-            <Route path="/rooms/:id/edit" element={user ? <RoomFormPage user={user} /> : <Navigate to="/login" />} />
+            <Route path="/dashboard" element={user && user.vai_tro !== 'NGUOI_THUE' ? <DashboardPage /> : <Navigate to={user ? '/tenant/dashboard' : '/login'} />} />
+            <Route path="/rooms" element={user && user.vai_tro !== 'NGUOI_THUE' ? <RoomListPage /> : <Navigate to={user ? '/tenant/rooms' : '/login'} />} />
+            <Route path="/rooms/new" element={user && user.vai_tro !== 'NGUOI_THUE' ? <RoomFormPage user={user} /> : <Navigate to={user ? '/tenant/rooms' : '/login'} />} />
+            <Route path="/rooms/:id/edit" element={user && user.vai_tro !== 'NGUOI_THUE' ? <RoomFormPage user={user} /> : <Navigate to={user ? '/tenant/rooms' : '/login'} />} />
             <Route path="/rooms/:id" element={user ? <RoomDetailPage /> : <Navigate to="/login" />} />
-            <Route path="/contracts" element={user ? <ContractListPage /> : <Navigate to="/login" />} />
-            <Route path="/contracts/new" element={user ? <ContractFormPage /> : <Navigate to="/login" />} />
-            <Route path="/contracts/:id/edit" element={user ? <ContractFormPage /> : <Navigate to="/login" />} />
+
+            <Route path="/contracts" element={user && user.vai_tro !== 'NGUOI_THUE' ? <ContractListPage /> : <Navigate to={user ? '/tenant/contracts' : '/login'} />} />
+            <Route path="/contracts/new" element={user && user.vai_tro !== 'NGUOI_THUE' ? <ContractFormPage /> : <Navigate to={user ? '/tenant/contracts' : '/login'} />} />
+            <Route path="/contracts/:id/edit" element={user && user.vai_tro !== 'NGUOI_THUE' ? <ContractFormPage /> : <Navigate to={user ? '/tenant/contracts' : '/login'} />} />
             <Route path="/contracts/:id" element={user ? <ContractDetailPage /> : <Navigate to="/login" />} />
-            <Route path="/invoices" element={user ? <InvoiceListPage /> : <Navigate to="/login" />} />
-            <Route path="/invoices/new" element={user ? <InvoiceFormPage /> : <Navigate to="/login" />} />
-            <Route path="/invoices/:id/edit" element={user ? <InvoiceFormPage /> : <Navigate to="/login" />} />
+
+            <Route path="/invoices" element={user && user.vai_tro !== 'NGUOI_THUE' ? <InvoiceListPage /> : <Navigate to={user ? '/tenant/invoices' : '/login'} />} />
+            <Route path="/invoices/new" element={user && user.vai_tro !== 'NGUOI_THUE' ? <InvoiceFormPage /> : <Navigate to={user ? '/tenant/invoices' : '/login'} />} />
+            <Route path="/invoices/:id/edit" element={user && user.vai_tro !== 'NGUOI_THUE' ? <InvoiceFormPage /> : <Navigate to={user ? '/tenant/invoices' : '/login'} />} />
             <Route path="/invoices/:id" element={user ? <InvoiceDetailPage /> : <Navigate to="/login" />} />
+
             <Route path="/payments/:invoiceId" element={user ? <PaymentPage /> : <Navigate to="/login" />} />
-            <Route path="/tenants" element={user ? <TenantListPage /> : <Navigate to="/login" />} />
-            <Route path="/tenants/new" element={user ? <TenantFormPage /> : <Navigate to="/login" />} />
-            <Route path="/tenants/:id/edit" element={user ? <TenantFormPage /> : <Navigate to="/login" />} />
-            <Route path="/tenants/:id" element={user ? <TenantDetailPage /> : <Navigate to="/login" />} />
-            <Route path="/users" element={user ? <UserManagementPage /> : <Navigate to="/login" />} />
+            <Route path="/tenants" element={user && (user.vai_tro === 'CHU_TRO' || user.vai_tro === 'ADMIN') ? <TenantListPage /> : <Navigate to={user ? '/tenant/dashboard' : '/login'} />} />
+            <Route path="/tenants/new" element={user && (user.vai_tro === 'CHU_TRO' || user.vai_tro === 'ADMIN') ? <TenantFormPage /> : <Navigate to={user ? '/tenant/dashboard' : '/login'} />} />
+            <Route path="/tenants/:id/edit" element={user && (user.vai_tro === 'CHU_TRO' || user.vai_tro === 'ADMIN') ? <TenantFormPage /> : <Navigate to={user ? '/tenant/dashboard' : '/login'} />} />
+            <Route path="/tenants/:id" element={user && (user.vai_tro === 'CHU_TRO' || user.vai_tro === 'ADMIN') ? <TenantDetailPage /> : <Navigate to={user ? '/tenant/dashboard' : '/login'} />} />
+            <Route path="/users" element={user && user.vai_tro === 'ADMIN' ? <UserManagementPage /> : <Navigate to={user ? '/tenant/dashboard' : '/login'} />} />
             <Route path="/profile" element={user ? <ProfilePage user={user} onUpdateUser={setUser} /> : <Navigate to="/login" />} />
-            <Route path="/*" element={user ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
+
+            <Route path="/tenant/dashboard" element={user && user.vai_tro === 'NGUOI_THUE' ? <DashboardPage /> : <Navigate to={user ? '/dashboard' : '/login'} />} />
+            <Route path="/tenant/rooms" element={user && user.vai_tro === 'NGUOI_THUE' ? <RoomListPage /> : <Navigate to={user ? '/rooms' : '/login'} />} />
+            <Route path="/tenant/contracts" element={user && user.vai_tro === 'NGUOI_THUE' ? <ContractListPage /> : <Navigate to={user ? '/contracts' : '/login'} />} />
+            <Route path="/tenant/invoices" element={user && user.vai_tro === 'NGUOI_THUE' ? <InvoiceListPage /> : <Navigate to={user ? '/invoices' : '/login'} />} />
+            <Route path="/tenant/profile" element={user && user.vai_tro === 'NGUOI_THUE' ? <ProfilePage user={user} onUpdateUser={setUser} /> : <Navigate to={user ? '/profile' : '/login'} />} />
+
+            <Route path="/*" element={user ? <Navigate to={user.vai_tro === 'NGUOI_THUE' ? '/tenant/dashboard' : '/dashboard'} /> : <Navigate to="/login" />} />
           </Routes>
         </div>
       </div>
+      <ChatbotWidget />
     </div>
   );
 }

@@ -130,7 +130,7 @@ try {
     `);
     console.log('    ✅ Index idx_file_hash: OK');
   } catch (err) {
-    if (err.code === 'ER_DUP_KEY_NAME') {
+    if (err.code === 'ER_DUP_KEYNAME' || err.code === 'ER_DUP_KEY_NAME' || err.message.includes('Duplicate key name')) {
       console.log('    ⏭️  Index idx_file_hash đã tồn tại, bỏ qua');
     } else {
       throw err;

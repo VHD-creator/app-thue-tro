@@ -64,6 +64,14 @@ export async function resendVerificationEmail(email: string): Promise<{ message:
   });
 }
 
+export async function sendChatbotMessage(message: string): Promise<{ reply: string }> {
+  return fetchJson<{ reply: string }>(`${BASE_URL}/chatbot`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ message })
+  });
+}
+
 export async function getCurrentUser(): Promise<User> {
   const response = await fetchJson<{ message: string; user: User }>(`${BASE_URL}/auth/me`, {
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }

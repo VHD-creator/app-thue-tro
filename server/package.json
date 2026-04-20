@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "sync": "node sync.js"
+    "sync": "node sync.js",
+    "migrate": "node migrations/migrate.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
