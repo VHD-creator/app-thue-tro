@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchTenants } from '../api/api';
-import { Tenant } from '../types';
+import { Tenant, User } from '../types';
 
-export default function TenantListPage() {
+export default function TenantListPage({ user }: { user: User }) {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');

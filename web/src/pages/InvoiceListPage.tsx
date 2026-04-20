@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchInvoices } from '../api/api';
-import { Invoice } from '../types';
-
+import { fetchInvoices, fetchMyInvoices } from '../api/api';
+import { Invoice, User } from '../types';
 
 const statusClass = (status: number) => {
   switch (status) {
@@ -15,7 +14,8 @@ const statusClass = (status: number) => {
   }
 };
 
-export default function InvoiceListPage() {
+export default function InvoiceListPage({ user }: { user: User }) {
+  const isTenant = user.vai_tro === 'NGUOI_THUE';
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
@@ -36,11 +36,13 @@ export default function InvoiceListPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetchInvoices()
+    const apiCall = isTenant ? fetchMyInvoices() : fetchInvoices();
+
+    apiCall
       .then(setInvoices)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Không tải được hóa đơn'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Không tải được hóa đơn'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [isTenant]);
 
   return (
     <div>
@@ -49,9 +51,11 @@ export default function InvoiceListPage() {
           <h2>Danh sách hóa đơn</h2>
           <p className="text-muted">Xem trạng thái và tổng tiền hóa đơn.</p>
         </div>
-        <Link className="button button-primary" to="/invoices/new">
-          Thêm hóa đơn
-        </Link>
+        {!isTenant && (
+          <Link className="button button-primary" to="/invoices/new">
+            Thêm hóa đơn
+          </Link>
+        )}
       </div>
       <div className="list-controls">
         <input

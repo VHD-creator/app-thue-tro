@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { fetchInvoiceById, fetchPaymentsByInvoice } from '../api/api';
-import { Invoice, Payment } from '../types';
+import { Invoice, Payment, User } from '../types';
 
-export default function InvoiceDetailPage() {
+export default function InvoiceDetailPage({ user }: { user: User }) {
+  const isTenant = user.vai_tro === 'NGUOI_THUE';
   const { id } = useParams();
   const navigate = useNavigate();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -33,17 +34,21 @@ export default function InvoiceDetailPage() {
           <p className="text-muted">Chi tiết hóa đơn và lịch sử thanh toán.</p>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
-          <Link className="button button-secondary" to="/invoices">
+          <Link className="button button-secondary" to={isTenant ? "/tenant/invoices" : "/invoices"}>
             Quay lại
           </Link>
           {invoice ? (
             <>
-              <button className="button button-primary" onClick={() => navigate(`/payments/${invoice.id_hoa_don}`)}>
-                Thanh toán
-              </button>
-              <Link className="button button-secondary" to={`/invoices/${invoice.id_hoa_don}/edit`}>
-                Sửa hóa đơn
-              </Link>
+              {invoice.trang_thai === 0 && (
+                <button className="button button-primary" onClick={() => navigate(`/payments/${invoice.id_hoa_don}`)}>
+                  Thanh toán
+                </button>
+              )}
+              {!isTenant && (
+                <Link className="button button-secondary" to={`/invoices/${invoice.id_hoa_don}/edit`}>
+                  Sửa hóa đơn
+                </Link>
+              )}
             </>
           ) : null}
         </div>
@@ -81,7 +86,7 @@ export default function InvoiceDetailPage() {
             <h3>Thanh toán</h3>
             {payments.length ? (
               <div className="list-card">
-                {payments.map((payment) => (
+                {payments.map((payment: Payment) => (
                   <div key={payment.id_thanh_toan} className="list-item">
                     <div>
                       <h4>{payment.hinh_thuc}</h4>

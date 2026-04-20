@@ -1,16 +1,35 @@
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { fetchRoomById, fetchRoomContracts, fetchRoomImages, fetchRoomInvoices } from '../api/api';
-import { Contract, Invoice, Room, RoomImage } from '../types';
+import { useEffect, useState, FormEvent } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { fetchRoomById, fetchRoomContracts, fetchRoomImages, fetchRoomInvoices, createRentRequest } from '../api/api';
+import { Contract, Invoice, Room, RoomImage, User } from '../types';
 
-export default function RoomDetailPage() {
+interface Props {
+  user: User;
+}
+
+export default function RoomDetailPage({ user }: Props) {
   const { id } = useParams();
+  const navigate = useNavigate();
+  
+  const isLandlord = user.vai_tro === 'CHU_TRO' || user.vai_tro === 'ADMIN';
+  const isTenant = user.vai_tro === 'NGUOI_THUE';
+
   const [room, setRoom] = useState<Room | null>(null);
   const [images, setImages] = useState<RoomImage[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const isVacant = room?.trang_thai === 0;
+
+  // Rent form state
+  const [showRentForm, setShowRentForm] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [deposit, setDeposit] = useState('');
+  const [note, setNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -19,21 +38,52 @@ export default function RoomDetailPage() {
     setLoading(true);
     setError('');
 
-    Promise.all([
+    const promises: [Promise<Room>, Promise<RoomImage[]>, Promise<any>, Promise<any>] = [
       fetchRoomById(roomId),
       fetchRoomImages(roomId),
-      fetchRoomContracts(roomId),
-      fetchRoomInvoices(roomId)
-    ])
+      isLandlord ? fetchRoomContracts(roomId) : Promise.resolve({ data: [] }),
+      isLandlord ? fetchRoomInvoices(roomId) : Promise.resolve({ data: [] })
+    ];
+
+    Promise.all(promises)
       .then(([roomData, imageData, contractData, invoiceData]) => {
         setRoom(roomData);
         setImages(imageData);
-        setContracts(contractData);
-        setInvoices(invoiceData);
+        setContracts(contractData.data || contractData || []);
+        setInvoices(invoiceData.data || invoiceData || []);
+        if (roomData) {
+          setDeposit(roomData.gia_phong.toString());
+        }
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu phòng'))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, isLandlord]);
+
+  async function handleRentSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!id || !room) return;
+    
+    setError('');
+    setSubmitSuccess('');
+    setSubmitting(true);
+
+    try {
+      await createRentRequest({
+        id_phong: room.id_phong,
+        ngay_bat_dau_mong_muon: startDate,
+        tien_coc: Number(deposit),
+        ghi_chu: note
+      });
+      setSubmitSuccess('Gửi yêu cầu thuê phòng thành công! Đang chuyển hướng...');
+      setTimeout(() => {
+        navigate('/tenant/dashboard'); // Redirect to their list or dashboard
+      }, 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Lỗi khi gửi yêu cầu');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   if (!id) {
     return <div className="panel">ID phòng không hợp lệ.</div>;
@@ -47,94 +97,235 @@ export default function RoomDetailPage() {
           <p className="text-muted">Thông tin chi tiết phòng và lịch sử hợp đồng / hóa đơn.</p>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
-          <Link className="button button-secondary" to="/rooms">
-            Quay lại danh sách
-          </Link>
-          <Link className="button button-primary" to={`/rooms/${id}/edit`}>
-            Sửa phòng
-          </Link>
+          <button className="button button-secondary" onClick={() => navigate(-1)}>
+            Quay lại
+          </button>
+          {isLandlord && (
+            <Link className="button button-primary" to={`/rooms/${id}/edit`}>
+              Sửa phòng
+            </Link>
+          )}
+          {isTenant && isVacant && !showRentForm && (
+            <button className="button button-primary" onClick={() => setShowRentForm(true)}>
+              Thuê phòng này
+            </button>
+          )}
         </div>
       </div>
+
       {loading ? (
         <div className="panel">Đang tải thông tin phòng...</div>
-      ) : error ? (
-        <div className="panel">{error}</div>
+      ) : error && !showRentForm ? (
+        <div className="panel" style={{ color: 'red' }}>{error}</div>
       ) : room ? (
         <>
+          {showRentForm && (
+            <div className="card" style={{ marginBottom: 20, border: '2px solid #3b82f6' }}>
+              <h3>Đăng ký thuê phòng: {room.ten_phong}</h3>
+              <form onSubmit={handleRentSubmit} style={{ display: 'grid', gap: 16, marginTop: 16 }}>
+                <div className="grid-2">
+                  <div>
+                    <label>Ngày muốn bắt đầu thuê</label>
+                    <input 
+                      type="date" 
+                      required 
+                      value={startDate} 
+                      onChange={e => setStartDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+                  <div>
+                    <label>Tiền cọc dự kiến (VNĐ)</label>
+                    <input 
+                      type="number" 
+                      required 
+                      value={deposit} 
+                      onChange={e => setDeposit(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label>Ghi chú cho chủ trọ</label>
+                  <textarea 
+                    value={note} 
+                    onChange={e => setNote(e.target.value)} 
+                    placeholder="VD: Tôi muốn thuê lâu dài, có nuôi thú cưng nhỏ..."
+                    rows={3}
+                  />
+                </div>
+                {error && <div style={{ color: 'red' }}>{error}</div>}
+                {submitSuccess && <div style={{ color: 'green' }}>{submitSuccess}</div>}
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button type="submit" className="button button-primary" disabled={submitting}>
+                    {submitting ? 'Đang gửi...' : 'Xác nhận gửi yêu cầu'}
+                  </button>
+                  <button type="button" className="button button-secondary" onClick={() => setShowRentForm(false)}>
+                    Hủy bỏ
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
           <div className="card" style={{ marginBottom: 20 }}>
-            <h3>{room.ten_phong}</h3>
-            <p>{room.mo_ta || 'Phòng chưa có mô tả'}</p>
-            <p>
-              <strong>Giá phòng:</strong> {room.gia_phong.toLocaleString()} VNĐ
-            </p>
-            <p>
-              <strong>Trạng thái:</strong> {room.trang_thai === 0 ? 'Còn trống' : room.trang_thai === 1 ? 'Đang thuê' : 'Đang chờ'}
-            </p>
-            <p>
-              <strong>Chủ trọ:</strong> {room.ChuTro?.ho_ten || 'Không xác định'}
-            </p>
-          </div>
-          {images.length > 0 ? (
-            <div className="list-card">
-              {images.map((image) => (
-                <div key={image.id_hinh_anh} className="list-item">
-                  <div>
-                    <strong>{image.ten_file}</strong>
-                    <p>{image.mo_ta || image.duong_dan}</p>
-                  </div>
-                  <div>
-                    <a href={image.duong_dan} target="_blank" rel="noreferrer">
-                      Xem ảnh
-                    </a>
-                  </div>
-                </div>
-              ))}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+              <h3>{room.ten_phong}</h3>
+              <span className={`badge ${isVacant ? 'badge-success' : 'badge-warning'}`} style={{ 
+                padding: '4px 12px', 
+                borderRadius: '999px',
+                backgroundColor: isVacant ? '#dcfce7' : '#fef3c7',
+                color: isVacant ? '#166534' : '#92400e'
+              }}>
+                {room.trang_thai === 0 ? 'Còn trống' : room.trang_thai === 1 ? 'Đang thuê' : 'Đang chờ duyệt'}
+              </span>
             </div>
-          ) : null}
-          <div className="grid-2" style={{ gap: 16 }}>
-            <div className="card">
-              <h3>Hợp đồng liên quan</h3>
-              {contracts.length ? (
-                <div className="list-card">
-                  {contracts.map((contract) => (
-                    <div key={contract.id_hop_dong} className="list-item">
-                      <div>
-                        <h4>Hợp đồng #{contract.id_hop_dong}</h4>
-                        <small>{contract.NguoiThue?.ho_ten || `Người thuê ${contract.id_nguoi_thue}`}</small>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div>{contract.ngay_bat_dau} → {contract.ngay_ket_thuc}</div>
-                      </div>
-                    </div>
-                  ))}
+            <p style={{ marginTop: 12 }}>{room.mo_ta || 'Phòng chưa có mô tả'}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginTop: 16 }}>
+              <div>
+                <strong>Giá phòng:</strong> 
+                <p style={{ fontSize: '1.25rem', color: '#2563eb', fontWeight: 'bold' }}>
+                  {room.gia_phong.toLocaleString()} VNĐ/tháng
+                </p>
+              </div>
+              <div>
+                <strong>Chủ trọ:</strong>
+                <p>{room.ChuTro?.ho_ten || 'Không xác định'}</p>
+              </div>
+              {room.ChuTro?.so_dien_thoai && (
+                <div>
+                  <strong>Liên hệ:</strong>
+                  <p>{room.ChuTro.so_dien_thoai}</p>
                 </div>
-              ) : (
-                <div className="panel">Không có hợp đồng liên quan.</div>
-              )}
-            </div>
-            <div className="card">
-              <h3>Hóa đơn liên quan</h3>
-              {invoices.length ? (
-                <div className="list-card">
-                  {invoices.map((invoice) => (
-                    <div key={invoice.id_hoa_don} className="list-item">
-                      <div>
-                        <h4>#{invoice.id_hoa_don}</h4>
-                        <small>{invoice.thang_nam}</small>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <Link to={`/invoices/${invoice.id_hoa_don}`} className="button button-secondary">
-                          Xem
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="panel">Không có hóa đơn liên quan.</div>
               )}
             </div>
           </div>
+
+          {images.length > 0 && (
+            <div style={{ marginBottom: 24 }}>
+              <h3>Hình ảnh phòng</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 16, marginTop: 12 }}>
+                {images.map((image) => (
+                  <div key={image.id_hinh_anh} className="card" style={{ padding: 8 }}>
+                    <img 
+                      src={image.duong_dan.startsWith('http') ? image.duong_dan : `/api${image.duong_dan}`} 
+                      alt={image.ten_file} 
+                      style={{ width: '100%', height: 180, objectFit: 'cover', borderRadius: 4 }}
+                    />
+                    <p style={{ marginTop: 8, fontSize: '0.875rem', textAlign: 'center' }}>{image.mo_ta || image.ten_file}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isTenant && isVacant && (
+            <div className="card shadow-sm" style={{ padding: 24, border: '1px solid var(--primary)', backgroundColor: '#f1f5f9', marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <span style={{ fontSize: '1.5rem' }}>✨</span>
+                <h3 style={{ margin: 0 }}>Gửi yêu cầu thuê phòng</h3>
+              </div>
+              <p className="text-muted" style={{ marginBottom: 20, fontSize: '0.9rem' }}>
+                Phòng này đang trống. Hãy gửi yêu cầu để chủ trọ duyệt và tạo hợp đồng cho bạn.
+              </p>
+              
+              <form onSubmit={handleRentSubmit}>
+                <div className="grid-2" style={{ gap: 16, marginBottom: 20 }}>
+                  <div>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: 6 }}>Ngày muốn dời vào</label>
+                    <input 
+                      type="date" 
+                      value={startDate} 
+                      onChange={e => setStartDate(e.target.value)} 
+                      required
+                      style={{ border: '1px solid #c7d2fe' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: 6 }}>Tiền cọc mong muốn (VNĐ)</label>
+                    <input 
+                      type="number" 
+                      value={deposit} 
+                      onChange={e => setDeposit(e.target.value)} 
+                      required
+                      style={{ border: '1px solid #c7d2fe' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: 6 }}>Ghi chú gửi chủ trọ</label>
+                  <textarea 
+                    value={note} 
+                    onChange={e => setNote(e.target.value)} 
+                    placeholder="Ví dụ: Tôi muốn thuê từ đầu tháng tới..."
+                    style={{ width: '100%', padding: 12, borderRadius: 12, border: '1px solid #c7d2fe' }}
+                    rows={3}
+                  />
+                </div>
+
+                {error && <p style={{ color: '#dc2626', marginBottom: 16, fontSize: '0.9rem' }}>{error}</p>}
+                {submitSuccess && <p style={{ color: '#059669', marginBottom: 16, fontSize: '0.9rem', fontWeight: 600 }}>{submitSuccess}</p>}
+
+                <button 
+                  type="submit"
+                  className="button button-primary" 
+                  style={{ width: '100%', padding: '14px' }}
+                  disabled={submitting || !!submitSuccess}
+                >
+                  {submitting ? 'Đang gửi yêu cầu...' : 'Gửi yêu cầu thuê ngay'}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {isLandlord && (
+            <div className="grid-2" style={{ gap: 16 }}>
+              <div className="card shadow-sm">
+                <h3 className="mb-4">📋 Lịch sử hợp đồng</h3>
+                {contracts.length ? (
+                  <div className="list-card">
+                    {contracts.map((contract) => (
+                      <div key={contract.id_hop_dong} className="list-item">
+                        <div>
+                          <h4 style={{ margin: 0 }}>{contract.NguoiThue?.ho_ten || `Người thuê #${contract.id_nguoi_thue}`}</h4>
+                          <small className="text-muted">{new Date(contract.ngay_bat_dau).toLocaleDateString('vi-VN')} - {new Date(contract.ngay_ket_thuc).toLocaleDateString('vi-VN')}</small>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <span className={`status-chip ${contract.trang_thai === 1 ? 'paid' : 'unpaid'}`} style={{ fontSize: '0.75rem' }}>
+                            {contract.trang_thai === 1 ? 'Hiệu lực' : 'Hết hạn'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="panel" style={{ textAlign: 'center', opacity: 0.7 }}>Chưa có hợp đồng nào.</div>
+                )}
+              </div>
+              <div className="card shadow-sm">
+                <h3 className="mb-4">🧾 Hóa đơn phòng</h3>
+                {invoices.length ? (
+                  <div className="list-card">
+                    {invoices.map((invoice) => (
+                      <div key={invoice.id_hoa_don} className="list-item">
+                        <div>
+                          <h4 style={{ margin: 0 }}>Tháng {invoice.thang_nam}</h4>
+                          <small className="text-muted">{invoice.tong_tien.toLocaleString()} VNĐ</small>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <Link to={`/invoices/${invoice.id_hoa_don}`} className="button button-secondary" style={{ fontSize: '0.85rem', padding: '6px 12px' }}>
+                            Chi tiết
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="panel" style={{ textAlign: 'center', opacity: 0.7 }}>Chưa có hóa đơn nào.</div>
+                )}
+              </div>
+            </div>
+          )}
         </>
       ) : (
         <div className="panel">Không tìm thấy phòng.</div>

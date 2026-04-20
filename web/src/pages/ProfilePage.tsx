@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { changePassword, fetchProfile, updateProfile, resendVerificationEmail } from '../api/api';
-import { ProfileUpdatePayload, User } from '../types';
+import { changePassword, fetchProfile, updateProfile, resendVerificationEmail, fetchBankInfo, fetchBanks, updateBankInfo } from '../api/api';
+import { ProfileUpdatePayload, User, BankInfo } from '../types';
 
 type Props = {
   user: User;
@@ -25,17 +25,39 @@ export default function ProfilePage({ user, onUpdateUser }: Props) {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
 
+  // Bank Info state
+  const [bankInfo, setBankInfo] = useState<BankInfo>({ so_tai_khoan: '', ten_ngan_hang: '', ma_ngan_hang: '' });
+  const [banks, setBanks] = useState<any[]>([]);
+  const [bankLoading, setBankLoading] = useState(false);
+  const [bankSuccess, setBankSuccess] = useState('');
+  const [qrPreview, setQrPreview] = useState<string | null>(null);
+
   useEffect(() => {
     setLoading(true);
-    fetchProfile(user.vai_tro)
-      .then((result) => {
-        setProfile(result);
-        setHoTen(result.ho_ten || '');
-        setEmail(result.email || '');
-        setPhone(result.so_dien_thoai || '');
-        setAddress(result.dia_chi || '');
+    const promises: [Promise<any>, Promise<any>?, Promise<any>?] = [fetchProfile(user.vai_tro)];
+    
+    if (user.vai_tro === 'CHU_TRO') {
+      promises.push(fetchBankInfo());
+      promises.push(fetchBanks());
+    }
+
+    Promise.all(promises)
+      .then(([profileResult, bankResult, banksResult]) => {
+        setProfile(profileResult);
+        setHoTen(profileResult.ho_ten || '');
+        setEmail(profileResult.email || '');
+        setPhone(profileResult.so_dien_thoai || '');
+        setAddress(profileResult.dia_chi || '');
+        
+        if (bankResult) {
+          setBankInfo(bankResult.data);
+          setQrPreview(bankResult.qr_preview);
+        }
+        if (banksResult) {
+          setBanks(banksResult);
+        }
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Không thể tải profile'))
+      .catch((err) => setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu'))
       .finally(() => setLoading(false));
   }, [user.vai_tro]);
 
@@ -61,6 +83,21 @@ export default function ProfilePage({ user, onUpdateUser }: Props) {
       setError(err instanceof Error ? err.message : 'Không thể cập nhật profile');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleBankSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBankLoading(true);
+    setBankSuccess('');
+    try {
+      const response = await updateBankInfo(bankInfo);
+      setBankSuccess(response.message || 'Cập nhật ngân hàng thành công');
+      setQrPreview(response.qr_mau);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Lỗi cập nhật ngân hàng');
+    } finally {
+      setBankLoading(false);
     }
   }
 
@@ -108,153 +145,173 @@ export default function ProfilePage({ user, onUpdateUser }: Props) {
   }
 
   return (
-    <div>
-      <div className="section-title">
-        <div>
-          <h2>Hồ sơ</h2>
-          <p className="text-muted">Cập nhật thông tin cá nhân của bạn.</p>
-        </div>
-      </div>
-      {loading ? (
-        <div className="panel">Đang tải thông tin...</div>
-      ) : (
-        <div className="card" style={{ maxWidth: 560 }}>
-          <div style={{ marginBottom: 20 }}>
-            <p>
-              <strong>Tên đăng nhập:</strong> {user.ten_dang_nhap}
-            </p>
-            <p>
-              <strong>Vai trò:</strong> {user.vai_tro}
-            </p>
+    <div style={{ display: 'grid', gap: 24, paddingBottom: 40 }}>
+      {/* Thông tin cơ bản */}
+      <section>
+        <div className="section-title">
+          <div>
+            <h2>Hồ sơ cá nhân</h2>
+            <p className="text-muted">Cập nhật thông tin cơ bản để mọi người nhận diện bạn.</p>
           </div>
-
-          {/* ✅ Verification Status for CHU_TRO */}
-          {user.vai_tro === 'CHU_TRO' && (
-            <div style={{ 
-              padding: '16px',
-              marginBottom: '20px',
-              backgroundColor: profile.email_verified && profile.phone_verified ? '#ecfdf5' : '#fef3c7',
-              border: `1px solid ${profile.email_verified && profile.phone_verified ? '#6ee7b7' : '#fcd34d'}`,
-              borderRadius: '8px'
-            }}>
-              <p style={{ marginBottom: '12px', fontWeight: 'bold' }}>
-                {profile.email_verified && profile.phone_verified ? '✅ Tài khoản đã xác thực' : '⚠️ Tài khoản chưa xác thực'}
-              </p>
-              
-              <div style={{ display: 'grid', gap: '8px', marginBottom: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>{profile.email_verified ? '✅' : '❌'}</span>
-                  <span>Email xác thực: {profile.email_verified ? 'Đã xác thực' : 'Chưa xác thực'}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>{profile.phone_verified ? '✅' : '❌'}</span>
-                  <span>SĐT xác thực: {profile.phone_verified ? 'Đã xác thực' : 'Chưa xác thực'}</span>
-                </div>
+        </div>
+        {loading ? (
+          <div className="panel">Đang tải thông tin...</div>
+        ) : (
+          <div className="grid-2" style={{ gap: 24, alignItems: 'start' }}>
+            <div className="card">
+              <div style={{ marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #eee' }}>
+                <p style={{ margin: '0 0 4px 0' }}>Tên đăng nhập: <strong>{user.ten_dang_nhap}</strong></p>
+                <p style={{ margin: 0 }}>Vai trò: <span className="badge badge-info">{user.vai_tro}</span></p>
               </div>
 
-              {!profile.email_verified && (
+              {/* Status xác thực cho Chủ trọ */}
+              {user.vai_tro === 'CHU_TRO' && (
                 <div style={{ 
-                  padding: '12px', 
-                  backgroundColor: '#fff7ed',
-                  border: '1px solid #fed7aa',
-                  borderRadius: '6px',
-                  marginTop: '12px',
-                  fontSize: '14px'
+                  padding: '16px',
+                  marginBottom: '20px',
+                  backgroundColor: profile.email_verified ? '#ecfdf5' : '#fff7ed',
+                  border: `1px solid ${profile.email_verified ? '#6ee7b7' : '#fed7aa'}`,
+                  borderRadius: '8px',
+                  fontSize: '0.9rem'
                 }}>
-                  <p style={{ margin: '0 0 8px 0' }}>📧 Bạn cần xác thực email để tạo phòng trọ.</p>
-                  <button 
-                    className="button button-primary"
-                    type="button"
-                    onClick={handleResendVerification}
-                    disabled={resendLoading}
-                    style={{ fontSize: '14px', padding: '8px 12px', marginTop: '8px' }}
-                  >
-                    {resendLoading ? 'Đang gửi...' : '📨 Gửi lại email xác thực'}
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span>{profile.email_verified ? '✅' : '⚠️'}</span>
+                    <strong>{profile.email_verified ? 'Đã xác thực email' : 'Chưa xác thực email'}</strong>
+                  </div>
+                  {!profile.email_verified && (
+                    <button 
+                      className="button button-primary"
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={resendLoading}
+                      style={{ fontSize: '0.75rem', padding: '4px 8px' }}
+                    >
+                      {resendLoading ? 'Đang gửi...' : 'Gửi lại mã xác thực'}
+                    </button>
+                  )}
                 </div>
               )}
-            </div>
-          )}
 
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16 }}>
-            <div>
-              <label htmlFor="hoTen">Họ và tên</label>
-              <input id="hoTen" value={hoTen} onChange={(event) => setHoTen(event.target.value)} />
+              <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16 }}>
+                <div>
+                  <label htmlFor="hoTen">Họ và tên</label>
+                  <input id="hoTen" value={hoTen} onChange={(event) => setHoTen(event.target.value)} required />
+                </div>
+                <div>
+                  <label>Số CCCD / Định danh</label>
+                  <input value={profile.cccd || ''} readOnly disabled style={{ background: '#f3f4f6', cursor: 'not-allowed' }} />
+                  <small className="text-muted">Liên hệ chủ trọ nếu cần thay đổi CCCD.</small>
+                </div>
+                <div>
+                  <label htmlFor="email">Email</label>
+                  <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+                </div>
+                <div>
+                  <label htmlFor="phone">Số điện thoại</label>
+                  <input id="phone" value={phone} onChange={(event) => setPhone(event.target.value)} required />
+                </div>
+                {user.vai_tro === 'CHU_TRO' && (
+                  <div>
+                    <label htmlFor="address">Địa chỉ liên hệ</label>
+                    <input id="address" value={address} onChange={(event) => setAddress(event.target.value)} />
+                  </div>
+                )}
+                {error && <div style={{ color: '#b91c1c' }}>{error}</div>}
+                {success && <div style={{ color: '#0f766e' }}>{success}</div>}
+                <button type="submit" className="button button-primary" disabled={loading}>
+                  {loading ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+              </form>
             </div>
-            <div>
-              <label htmlFor="email">Email</label>
-              <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+
+            <div className="card shadow-sm">
+              <h3>Đổi mật khẩu</h3>
+              <p className="text-muted" style={{ fontSize: '0.875rem', marginBottom: 20 }}>Cập nhật mật khẩu thường xuyên để bảo mật tài khoản.</p>
+              <form onSubmit={handlePasswordChange} style={{ display: 'grid', gap: 16 }}>
+                <div>
+                  <label>Mật khẩu hiện tại</label>
+                  <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required />
+                </div>
+                <div>
+                  <label>Mật khẩu mới</label>
+                  <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
+                </div>
+                <div>
+                  <label>Xác nhận mật khẩu mới</label>
+                  <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
+                </div>
+                {passwordError && <div style={{ color: '#b91c1c' }}>{passwordError}</div>}
+                {passwordSuccess && <div style={{ color: '#0f766e' }}>{passwordSuccess}</div>}
+                <button type="submit" className="button button-secondary" disabled={passwordLoading}>
+                  {passwordLoading ? 'Đang xử lý...' : 'Cập nhật mật khẩu'}
+                </button>
+              </form>
             </div>
+          </div>
+        )}
+      </section>
+
+      {/* Thông tin ngân hàng dành cho Chủ trọ */}
+      {user.vai_tro === 'CHU_TRO' && (
+        <section>
+          <div className="section-title">
             <div>
-              <label htmlFor="phone">Số điện thoại</label>
-              <input id="phone" value={phone} onChange={(event) => setPhone(event.target.value)} />
+              <h2>Thông tin thanh toán (VietQR)</h2>
+              <p className="text-muted">Dùng để tự động tạo mã QR khi người thuê thanh toán hóa đơn.</p>
             </div>
-            {user.vai_tro === 'CHU_TRO' ? (
-              <div>
-                <label htmlFor="address">Địa chỉ</label>
-                <input id="address" value={address} onChange={(event) => setAddress(event.target.value)} />
+          </div>
+          <div className="grid-2" style={{ gap: 24, alignItems: 'start' }}>
+            <div className="card">
+              <form onSubmit={handleBankSubmit} style={{ display: 'grid', gap: 16 }}>
+                <div>
+                  <label>Chọn Ngân hàng</label>
+                  <select 
+                    value={bankInfo.ma_ngan_hang} 
+                    onChange={e => {
+                      const selected = banks.find(b => b.ma_bin === e.target.value);
+                      setBankInfo({ ...bankInfo, ma_ngan_hang: e.target.value, ten_ngan_hang: selected?.ten || '' });
+                    }}
+                    required
+                  >
+                    <option value="">-- Chọn ngân hàng --</option>
+                    {banks.map(bank => (
+                      <option key={bank.ma_bin} value={bank.ma_bin}>{bank.ten_viet_tat} - {bank.ten}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label>Số tài khoản</label>
+                  <input 
+                    type="text" 
+                    value={bankInfo.so_tai_khoan} 
+                    onChange={e => setBankInfo({ ...bankInfo, so_tai_khoan: e.target.value })} 
+                    placeholder="Nhập số tài khoản ngân hàng"
+                    required
+                  />
+                </div>
+                {bankSuccess && <div style={{ color: '#0f766e' }}>{bankSuccess}</div>}
+                <button type="submit" className="button button-primary" disabled={bankLoading} style={{ backgroundColor: '#059669' }}>
+                  {bankLoading ? 'Đang lưu...' : 'Lưu thông tin ngân hàng'}
+                </button>
+              </form>
+            </div>
+
+            <div className="card" style={{ textAlign: 'center' }}>
+              <h3>Mã QR mẫu</h3>
+              <p className="text-muted" style={{ fontSize: '0.85rem' }}>Đây là mã QR mẫu với thông tin của bạn.</p>
+              <div style={{ marginTop: 16, padding: 16, backgroundColor: '#f9fafb', borderRadius: 8 }}>
+                {qrPreview ? (
+                  <img src={qrPreview} alt="QR Preview" style={{ maxWidth: 200, width: '100%', height: 'auto' }} />
+                ) : (
+                  <div style={{ padding: '40px 20px', color: '#9ca3af', border: '2px dashed #e5e7eb' }}>
+                    Nhập thông tin ngân hàng để xem trước mã QR
+                  </div>
+                )}
               </div>
-            ) : null}
-            {error ? <div style={{ color: '#b91c1c', fontWeight: 600 }}>{error}</div> : null}
-            {success ? <div style={{ color: '#0f766e', fontWeight: 600 }}>{success}</div> : null}
-            <button type="submit" className="button button-primary" disabled={loading}>
-              {loading ? 'Đang lưu...' : 'Lưu thông tin'}
-            </button>
-          </form>
-        </div>
+            </div>
+          </div>
+        </section>
       )}
-
-      <div className="section-title" style={{ marginTop: 24 }}>
-        <div>
-          <h2>Đổi mật khẩu</h2>
-          <p className="text-muted">Bảo mật tài khoản bằng mật khẩu mới.</p>
-        </div>
-        <button type="button" className="button button-secondary" onClick={() => setShowPasswordForm((value) => !value)}>
-          {showPasswordForm ? 'Ẩn' : 'Đổi mật khẩu'}
-        </button>
-      </div>
-
-      {showPasswordForm ? (
-        <div className="card" style={{ maxWidth: 640, padding: 24 }}>
-          <form onSubmit={handlePasswordChange} style={{ display: 'grid', gap: 16 }}>
-            <div>
-              <label htmlFor="currentPassword">Mật khẩu hiện tại</label>
-              <input
-                id="currentPassword"
-                type="password"
-                value={currentPassword}
-                onChange={(event) => setCurrentPassword(event.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label htmlFor="newPassword">Mật khẩu mới</label>
-              <input
-                id="newPassword"
-                type="password"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label htmlFor="confirmPassword">Xác nhận mật khẩu mới</label>
-              <input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                required
-              />
-            </div>
-            {passwordError ? <div style={{ color: '#b91c1c', fontWeight: 600 }}>{passwordError}</div> : null}
-            {passwordSuccess ? <div style={{ color: '#0f766e', fontWeight: 600 }}>{passwordSuccess}</div> : null}
-            <button type="submit" className="button button-primary" disabled={passwordLoading}>
-              {passwordLoading ? 'Đang cập nhật...' : 'Đổi mật khẩu'}
-            </button>
-          </form>
-        </div>
-      ) : null}
     </div>
   );
 }

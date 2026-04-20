@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchContracts } from '../api/api';
-import { Contract } from '../types';
+import { fetchContracts, fetchMyContracts } from '../api/api';
+import { Contract, User } from '../types';
 
-export default function ContractListPage() {
+export default function ContractListPage({ user }: { user: User }) {
+  const isTenant = user.vai_tro === 'NGUOI_THUE';
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
@@ -26,11 +27,13 @@ export default function ContractListPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetchContracts()
+    const apiCall = isTenant ? fetchMyContracts() : fetchContracts();
+
+    apiCall
       .then(setContracts)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Không tải được hợp đồng'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Không tải được hợp đồng'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [isTenant]);
 
   return (
     <div>
@@ -39,9 +42,11 @@ export default function ContractListPage() {
           <h2>Danh sách hợp đồng</h2>
           <p className="text-muted">Xem danh sách hợp đồng và thời hạn.</p>
         </div>
-        <Link className="button button-primary" to="/contracts/new">
-          Thêm hợp đồng
-        </Link>
+        {!isTenant && (
+          <Link className="button button-primary" to="/contracts/new">
+            Thêm hợp đồng
+          </Link>
+        )}
       </div>
       <div className="list-controls">
         <input

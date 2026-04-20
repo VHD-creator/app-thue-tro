@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { fetchTenantById } from '../api/api';
-import { Tenant } from '../types';
+import { Tenant, User } from '../types';
 
-export default function TenantDetailPage() {
+export default function TenantDetailPage({ user }: { user: User }) {
   const { id } = useParams();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [error, setError] = useState('');

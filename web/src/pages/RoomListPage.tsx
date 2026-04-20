@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchRooms } from '../api/api';
-import { Room } from '../types';
+import { Room, User } from '../types';
 
-export default function RoomListPage() {
+export default function RoomListPage({ user }: { user: User }) {
+  const isTenant = user.vai_tro === 'NGUOI_THUE';
   const [rooms, setRooms] = useState<Room[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | '0' | '1' | '2'>('all');
@@ -51,9 +52,11 @@ export default function RoomListPage() {
           <h2>Danh sách phòng</h2>
           <p className="text-muted">Danh sách phòng và trạng thái tương tự màn hình Android.</p>
         </div>
-        <Link className="button button-primary" to="/rooms/new">
-          Thêm phòng
-        </Link>
+        {!isTenant && (
+          <Link className="button button-primary" to="/rooms/new">
+            Thêm phòng
+          </Link>
+        )}
       </div>
       <div className="list-controls">
         <input

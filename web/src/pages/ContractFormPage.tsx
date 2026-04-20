@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createContract, fetchContractById, fetchRooms, fetchTenants, updateContract, deleteContract } from '../api/api';
-import { Contract, ContractPayload, Room, Tenant } from '../types';
+import { Contract, ContractPayload, Room, Tenant, User } from '../types';
 
-export default function ContractFormPage() {
+export default function ContractFormPage({ user }: { user: User }) {
   const { id } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();

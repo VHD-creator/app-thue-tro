@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchContractById } from '../api/api';
-import { Contract } from '../types';
+import { Contract, User } from '../types';
 
-export default function ContractDetailPage() {
+export default function ContractDetailPage({ user }: { user: User }) {
+  const isTenant = user.vai_tro === 'NGUOI_THUE';
   const { id } = useParams();
   const [contract, setContract] = useState<Contract | null>(null);
   const [error, setError] = useState('');
@@ -27,12 +28,14 @@ export default function ContractDetailPage() {
           <p className="text-muted">Thông tin hợp đồng chi tiết.</p>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
-          <Link className="button button-secondary" to="/contracts">
+          <Link className="button button-secondary" to={isTenant ? "/tenant/contracts" : "/contracts"}>
             Quay lại
           </Link>
-          <Link className="button button-primary" to={`/contracts/${id}/edit`}>
-            Sửa hợp đồng
-          </Link>
+          {!isTenant && (
+            <Link className="button button-primary" to={`/contracts/${id}/edit`}>
+              Sửa hợp đồng
+            </Link>
+          )}
         </div>
       </div>
       {loading ? (
