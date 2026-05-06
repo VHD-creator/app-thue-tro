@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createInvoice, fetchInvoiceById, fetchRooms, updateInvoice, deleteInvoice } from '../api/api';
-import { InvoicePayload, Room, Invoice } from '../types';
+import { InvoicePayload, Room, Invoice, User } from '../types';
 
-export default function InvoiceFormPage() {
+export default function InvoiceFormPage({ user }: { user: User }) {
   const { id } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();

@@ -57,10 +57,11 @@ export type Room = {
   id_chu_tro?: number;
   ten_phong: string;
   gia_phong: number;
+  floor: number;
   trang_thai: number;
   mo_ta?: string;
   Phong?: { id_phong: number; ten_phong: string; gia_phong?: number };
-  ChuTro?: { ho_ten?: string; dia_chi?: string };
+  ChuTro?: { ho_ten?: string; dia_chi?: string; so_dien_thoai?: string; email?: string };
 };
 
 export type RoomImage = {
@@ -178,12 +179,37 @@ export type UserActionResponse = {
   message: string;
   id_tai_khoan?: number;
 };
-// ================= VIETQR =================
-export type Bank = {
-  ma_bin: string;
-  ten_ngan_hang: string;
-  viettat?: string;
-  logo?: string;
+
+export type RentRequest = {
+  id_yeu_cau: number;
+  id_phong: number;
+  id_nguoi_thue: number;
+  ngay_bat_dau_mong_muon: string;
+  ghi_chu?: string;
+  trang_thai: number; // 0: Chờ duyệt, 1: Đã duyệt, 2: Từ chối/Hủy
+  ly_do_tu_choi?: string;
+  ngay_tao: string;
+  ngay_xu_ly?: string;
+  Phong?: {
+    id_phong: number;
+    ten_phong: string;
+    gia_phong: number;
+    mo_ta?: string;
+  };
+  NguoiThue?: {
+    id_nguoi_thue: number;
+    ho_ten: string;
+    so_dien_thoai: string;
+    email: string;
+    cccd: string;
+  };
+};
+
+export type RentRequestPayload = {
+  id_phong: number;
+  ngay_bat_dau_mong_muon: string;
+  tien_coc: number;
+  ghi_chu?: string;
 };
 
 export type VietQRResponse = {
@@ -195,30 +221,25 @@ export type VietQRResponse = {
   };
   thanh_toan: {
     qr_url: string;
-    bank: string;
-    account_number: string;
-    amount: number;
-    content: string;
+    so_tai_khoan: string;
+    ma_ngan_hang: string;
+    so_tien: number;
+    noi_dung: string;
+    ten_nguoi_nhan: string;
     huong_dan: string[];
   };
 };
 
 export type BankInfo = {
-  ho_ten: string;
+  ho_ten?: string;
   so_tai_khoan: string;
   ten_ngan_hang: string;
   ma_ngan_hang: string;
 };
 
-export type YeuCauThue = {
-  id_yeu_cau: number;
-  id_phong: number;
-  id_nguoi_thue: number;
-  ngay_bat_dau_mong_muon: string;
-  ghi_chu?: string;
-  trang_thai: number;
-  ly_do_tu_choi?: string;
-  ngay_tao: string;
-  Phong?: { id_phong: number; ten_phong: string; gia_phong: number; mo_ta?: string };
-  NguoiThue?: { id_nguoi_thue: number; ho_ten: string; so_dien_thoai?: string; email?: string; cccd?: string };
+export type Bank = {
+  ma_bin: string;
+  ten_ngan_hang: string;
+  viettat?: string;
+  logo?: string;
 };

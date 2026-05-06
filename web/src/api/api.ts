@@ -16,7 +16,11 @@ import {
   TenantPayload,
   UserAccount,
   Stats,
-  User
+  User,
+  RentRequest,
+  RentRequestPayload,
+  VietQRResponse,
+  BankInfo
 } from '../types';
 
 const BASE_URL = '/api';
@@ -195,6 +199,12 @@ export async function fetchContracts(): Promise<Contract[]> {
   });
 }
 
+export async function fetchMyContracts(): Promise<Contract[]> {
+  return fetchJson<Contract[]>(`${BASE_URL}/nguoiThue/hop-dong`, {
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+  });
+}
+
 export async function fetchContractById(id: number): Promise<Contract> {
   return fetchJson<Contract>(`${BASE_URL}/hopDong/${id}`, {
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
@@ -226,6 +236,12 @@ export async function deleteContract(id: number): Promise<any> {
 
 export async function fetchInvoices(): Promise<Invoice[]> {
   return fetchJson<Invoice[]>(`${BASE_URL}/hoaDon`, {
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+  });
+}
+
+export async function fetchMyInvoices(): Promise<Invoice[]> {
+  return fetchJson<Invoice[]>(`${BASE_URL}/nguoiThue/hoa-don`, {
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
   });
 }
@@ -351,28 +367,62 @@ export async function updateProfile(role: string, body: ProfileUpdatePayload): P
     body: JSON.stringify(body)
   });
 }
-// ==================== VIETQR ====================
 
-// Lấy danh sách ngân hàng
-export async function getBanks() {
-  return fetchJson<any[]>(`${BASE_URL}/vietqr/ngan-hang`, {
-    headers: { 'Content-Type': 'application/json' }
-  });
-}
+// ==================== YÊU CẦU THUÊ ====================
 
-// Lấy QR hóa đơn
-export async function getQrHoaDon(idHoaDon: number) {
-  return fetchJson<any>(`${BASE_URL}/vietqr/hoa-don/${idHoaDon}`, {
+export async function fetchRentRequests(status?: number): Promise<RentRequest[]> {
+  const query = status !== undefined ? `?trang_thai=${status}` : '';
+  return fetchJson<RentRequest[]>(`${BASE_URL}/yeuCauThue${query}`, {
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
   });
 }
 
-// Chủ trọ cập nhật ngân hàng
-export async function updateBankInfo(body: {
-  so_tai_khoan: string;
-  ten_ngan_hang: string;
-  ma_ngan_hang: string;
-}) {
+export async function fetchMyRentRequests(): Promise<RentRequest[]> {
+  return fetchJson<RentRequest[]>(`${BASE_URL}/yeuCauThue/cua-toi`, {
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+  });
+}
+
+export async function createRentRequest(body: RentRequestPayload): Promise<any> {
+  return fetchJson<any>(`${BASE_URL}/yeuCauThue`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(body)
+  });
+}
+
+export async function approveRentRequest(id: number, body: { ngay_ket_thuc: string; tien_coc: number }): Promise<any> {
+  return fetchJson<any>(`${BASE_URL}/yeuCauThue/${id}/duyet`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(body)
+  });
+}
+
+export async function rejectRentRequest(id: number, reason: string): Promise<any> {
+  return fetchJson<any>(`${BASE_URL}/yeuCauThue/${id}/tu-choi`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ ly_do_tu_choi: reason })
+  });
+}
+
+export async function cancelRentRequest(id: number): Promise<any> {
+  return fetchJson<any>(`${BASE_URL}/yeuCauThue/${id}/huy`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+  });
+}
+
+// ==================== VIETQR ====================
+
+export async function fetchVietQR(invoiceId: number): Promise<VietQRResponse> {
+  return fetchJson<VietQRResponse>(`${BASE_URL}/vietqr/hoa-don/${invoiceId}`, {
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+  });
+}
+
+export async function updateBankInfo(body: BankInfo): Promise<any> {
   return fetchJson<any>(`${BASE_URL}/vietqr/chu-tro/ngan-hang`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
@@ -380,25 +430,30 @@ export async function updateBankInfo(body: {
   });
 }
 
-// Lấy thông tin ngân hàng chủ trọ
-export async function getBankInfo() {
-  return fetchJson<any>(`${BASE_URL}/vietqr/chu-tro/ngan-hang`, {
+export async function fetchBankInfo(): Promise<{ da_cap_nhat: boolean; data: BankInfo; qr_preview: string | null }> {
+  return fetchJson<{ da_cap_nhat: boolean; data: BankInfo; qr_preview: string | null }>(`${BASE_URL}/vietqr/chu-tro/ngan-hang`, {
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
   });
 }
 
-// Xác nhận thanh toán
-export async function confirmPayment(idHoaDon: number, body?: {
-  so_tien?: number;
-  ghi_chu?: string;
-}) {
-  return fetchJson<any>(`${BASE_URL}/vietqr/xac-nhan/${idHoaDon}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-    body: JSON.stringify(body || {})
+export async function fetchBanks(): Promise<Array<{ ten: string; ma_bin: string; ten_viet_tat: string }>> {
+  return fetchJson<Array<{ ten: string; ma_bin: string; ten_viet_tat: string }>>(`${BASE_URL}/vietqr/ngan-hang`, {
+    headers: { 'Content-Type': 'application/json' }
   });
 }
-// ==================== ROOM DETAIL WITH INVOICES & CONTRACTS ====================
+
+export async function fetchMyRoom(): Promise<Room> {
+  const response = await fetch(`${BASE_URL}/phong/cua-toi`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    }
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Không tìm thấy phòng của bạn');
+  }
+  return response.json();
+}
 
 /**
  * Lấy chi tiết phòng + hợp đồng + hóa đơn
@@ -414,50 +469,14 @@ export async function fetchRoomDetail(id: number): Promise<any> {
   });
 }
 
-// ==================== YEU CAU THUE ====================
-
-export async function createYeuCauThue(body: any): Promise<any> {
-  return fetchJson<any>(`${BASE_URL}/yeuCauThue`, {
+// Xác nhận thanh toán (thủ công)
+export async function confirmPayment(idHoaDon: number, body?: {
+  so_tien?: number;
+  ghi_chu?: string;
+}) {
+  return fetchJson<any>(`${BASE_URL}/vietqr/xac-nhan/${idHoaDon}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body || {})
   });
 }
-
-export async function fetchMyYeuCauThue(): Promise<any[]> {
-  return fetchJson<any[]>(`${BASE_URL}/yeuCauThue/cua-toi`, {
-    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
-  });
-}
-
-export async function cancelYeuCauThue(id: number): Promise<any> {
-  return fetchJson<any>(`${BASE_URL}/yeuCauThue/${id}/huy`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
-  });
-}
-
-export async function fetchAllYeuCauThue(status?: number): Promise<any[]> {
-  const url = status !== undefined ? `${BASE_URL}/yeuCauThue?trang_thai=${status}` : `${BASE_URL}/yeuCauThue`;
-  return fetchJson<any[]>(url, {
-    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
-  });
-}
-
-export async function approveYeuCauThue(id: number, body: { ngay_ket_thuc: string; tien_coc: number }): Promise<any> {
-  return fetchJson<any>(`${BASE_URL}/yeuCauThue/${id}/duyet`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-    body: JSON.stringify(body)
-  });
-}
-
-export async function rejectYeuCauThue(id: number, ly_do: string): Promise<any> {
-  return fetchJson<any>(`${BASE_URL}/yeuCauThue/${id}/tu-choi`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-    body: JSON.stringify({ ly_do_tu_choi: ly_do })
-  });
-}
-
-

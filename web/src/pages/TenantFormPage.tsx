@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createTenant, fetchTenantById, updateTenant, deleteTenant } from '../api/api';
-import { TenantPayload, Tenant } from '../types';
+import { TenantPayload, Tenant, User } from '../types';
 
-export default function TenantFormPage() {
+export default function TenantFormPage({ user }: { user: User }) {
   const { id } = useParams();
   const isNew = id === 'new';
   const navigate = useNavigate();

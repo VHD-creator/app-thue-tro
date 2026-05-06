@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchStats, fetchContracts, fetchInvoices } from '../api/api';
-import { Stats, Contract, Invoice } from '../types';
-import { useAuth } from '../hooks/useAuth';
+import { fetchStats, fetchMyRoom, fetchInvoices, fetchRentRequests } from '../api/api';
+import { Stats, Room, Invoice, RentRequest, User } from '../types';
 
-function MetricCard({ title, value, label }: { title: string; value: string; label: string }) {
+function MetricCard({ title, value, label, icon = '📊' }: { title: string; value: string; label: string; icon?: string }) {
   return (
-    <div className="metric-card card">
-      <div className="icon">📊</div>
+    <div className="metric-card card shadow-sm">
+      <div className="icon">{icon}</div>
       <h3>{title}</h3>
       <p style={{ marginTop: 12, fontSize: '1.6rem', fontWeight: 700 }}>{value}</p>
       <p className="text-muted">{label}</p>
@@ -15,16 +14,11 @@ function MetricCard({ title, value, label }: { title: string; value: string; lab
   );
 }
 
-export default function DashboardPage() {
-  const { user, isLandlord, isTenant, loading: authLoading } = useAuth();
+export default function DashboardPage({ user }: { user: User }) {
   const [stats, setStats] = useState<Stats | null>(null);
-  const [tenantStats, setTenantStats] = useState({
-    contracts: 0,
-    upcomingInvoices: 0,
-    totalPaid: 0
-  });
-  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [myRoom, setMyRoom] = useState<Room | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [requests, setRequests] = useState<RentRequest[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -32,41 +26,122 @@ export default function DashboardPage() {
     if (!user) return;
     
     setLoading(true);
-    if (isLandlord) {
+    const isTenant = user.vai_tro === 'NGUOI_THUE';
+    
+    if (isTenant) {
+      Promise.all([
+        fetchMyRoom().catch(() => null),
+        fetchInvoices().catch(() => []),
+        fetchRentRequests().catch(() => [])
+      ]).then(([room, invs, reqs]) => {
+        setMyRoom(room);
+        setInvoices(invs.filter(i => i.trang_thai === 0)); // Only unpaid
+        setRequests(reqs);
+      }).catch((err) => setError(err instanceof Error ? err.message : 'Không tải được dữ liệu'))
+      .finally(() => setLoading(false));
+    } else {
       fetchStats()
         .then(setStats)
         .catch((err) => setError(err instanceof Error ? err.message : 'Không tải được dữ liệu'))
         .finally(() => setLoading(false));
-    } else if (isTenant) {
-      Promise.all([
-        fetchContracts(),
-        fetchInvoices()
-      ]).then(([ctrs, invs]) => {
-        setContracts(ctrs);
-        setInvoices(invs);
-        setTenantStats({
-          contracts: ctrs.length,
-          upcomingInvoices: invs.filter(i => i.trang_thai === 0).length,
-          totalPaid: invs.filter(i => i.trang_thai !== 0).reduce((sum, i) => sum + i.tong_tien, 0)
-        });
-      }).catch((err) => setError(err instanceof Error ? err.message : 'Không tải được dữ liệu'))
-      .finally(() => setLoading(false));
     }
-  }, [user, isLandlord, isTenant]);
+  }, [user]);
 
+  if (loading) return <div className="panel animate-pulse">Đang tải dữ liệu dashboard...</div>;
+
+  if (user.vai_tro === 'NGUOI_THUE') {
+    return (
+      <div className="tenant-dashboard">
+        <div className="section-title">
+          <div>
+            <h2>Chào mừng bạn trở lại, {user.profile?.ho_ten || user.ten_dang_nhap}! 👋</h2>
+            <p className="text-muted">Dưới đây là tóm tắt thông tin thuê phòng của bạn.</p>
+          </div>
+        </div>
+
+        <div className="grid-3" style={{ marginBottom: 32 }}>
+          <div className="card shadow-sm" style={{ padding: 24, background: 'linear-gradient(135deg, var(--primary) 0%, #a855f7 100%)', color: 'white' }}>
+            <h3 style={{ opacity: 0.9, fontSize: '0.9rem' }}>Phòng hiện tại</h3>
+            {myRoom ? (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: '1.8rem', fontWeight: 800 }}>{myRoom.ten_phong}</div>
+                <p style={{ marginTop: 4, opacity: 0.8 }}>{myRoom.gia_phong.toLocaleString()} VNĐ/tháng</p>
+                <Link to={`/rooms/${myRoom.id_phong}`} className="button" style={{ display: 'inline-block', marginTop: 16, backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', textDecoration: 'none', fontSize: '0.85rem' }}>
+                  Chi tiết phòng →
+                </Link>
+              </div>
+            ) : (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>Chưa thuê phòng</div>
+                <Link to="/tenant/rooms" className="button" style={{ display: 'inline-block', marginTop: 16, backgroundColor: 'white', color: 'var(--primary)', textDecoration: 'none', fontSize: '0.85rem' }}>
+                  Tìm phòng ngay
+                </Link>
+              </div>
+            )}
+          </div>
+
+          <MetricCard 
+            title="Hóa đơn chờ" 
+            value={invoices.length.toString()} 
+            label="Hóa đơn chưa thanh toán" 
+            icon="💰" 
+          />
+          
+          <MetricCard 
+            title="Yêu cầu" 
+            value={requests.length.toString()} 
+            label="Yêu cầu thuê đã gửi" 
+            icon="📩" 
+          />
+        </div>
+
+        <h3 style={{ marginBottom: 16 }}>Truy cập nhanh</h3>
+        <div className="quick-grid">
+          <Link to="/tenant/profile" className="quick-card-link">
+            <div className="quick-card">
+              <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>👤</div>
+              <h4>Hồ sơ cá nhân</h4>
+              <p className="text-muted" style={{ fontSize: '0.8rem' }}>Cập nhật thông tin định danh</p>
+            </div>
+          </Link>
+          <Link to="/tenant/invoices" className="quick-card-link">
+            <div className="quick-card">
+              <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>💳</div>
+              <h4>Thanh toán</h4>
+              <p className="text-muted" style={{ fontSize: '0.8rem' }}>Xem và trả hóa đơn hàng tháng</p>
+            </div>
+          </Link>
+          <Link to="/tenant/rent-requests" className="quick-card-link">
+            <div className="quick-card">
+              <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>📑</div>
+              <h4>Trạng thái thuê</h4>
+              <p className="text-muted" style={{ fontSize: '0.8rem' }}>Theo dõi các yêu cầu đã gửi</p>
+            </div>
+          </Link>
+          <Link to="/tenant/contracts" className="quick-card-link">
+            <div className="quick-card">
+              <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>📜</div>
+              <h4>Hợp đồng</h4>
+              <p className="text-muted" style={{ fontSize: '0.8rem' }}>Xem nội dung hợp đồng thuê</p>
+            </div>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Landlord/Admin Dashboard
   return (
     <div>
       <div className="section-title">
         <div>
-          <h2>Dashboard</h2>
-          <p className="text-muted">Tổng quan hệ thống và báo cáo nhanh.</p>
+          <h2>Dashboard Quản lý</h2>
+          <p className="text-muted">Tổng quan hệ thống và các chỉ số vận hành.</p>
         </div>
       </div>
-      {loading ? (
-        <div className="panel">Đang tải dữ liệu...</div>
-      ) : error ? (
+      {error ? (
         <div className="panel">{error}</div>
-      ) : isLandlord && stats ? (
+      ) : stats ? (
         <>
           <div className="grid-3 landlord-stats" style={{ marginBottom: 24 }}>
             <MetricCard title="🏠 Tổng phòng" value={stats.phong.tong.toString()} label="Phòng đã tạo" />
@@ -74,9 +149,9 @@ export default function DashboardPage() {
             <MetricCard title="🆓 Phòng trống" value={stats.phong.trong.toString()} label="Sẵn sàng" />
           </div>
           <div className="grid-3 landlord-stats" style={{ marginBottom: 24 }}>
-            <MetricCard title="💸 Chưa thu" value={stats.hoaDon.chuaThanhtoan.toString()} label="Hóa đơn chưa thanh toán" />
-            <MetricCard title="✅ Đã thu" value={stats.hoaDon.daThanhtoan.toString()} label="Hóa đơn đã thanh toán" />
-            <MetricCard title="💰 Doanh thu" value={`${stats.doanhThu.toLocaleString()} VNĐ`} label="Tổng doanh thu tháng" />
+            <MetricCard title="Hoá đơn chưa thu" value={stats.hoaDon.chuaThanhtoan.toString()} label="Chưa thanh toán" icon="⏳" />
+            <MetricCard title="Hoá đơn đã thu" value={stats.hoaDon.daThanhtoan.toString()} label="Đã thanh toán" icon="✅" />
+            <MetricCard title="Doanh thu" value={`${stats.doanhThu.toLocaleString()} VNĐ`} label="Tổng doanh thu" icon="📈" />
           </div>
           <div className="quick-grid">
             <Link to="/rooms" className="quick-card-link">
@@ -109,50 +184,8 @@ export default function DashboardPage() {
             </Link>
           </div>
         </>
-      ) : isTenant && tenantStats ? (
-        <>
-          <div className="section-title">
-            <h2>Xin chào, {user!.profile?.ho_ten || user!.ten_dang_nhap}!</h2>
-            <p className="text-muted">Tổng quan tài khoản người thuê của bạn.</p>
-          </div>
-          <div className="grid-3 tenant-stats" style={{ marginBottom: 24 }}>
-            <MetricCard title="📝 Hợp đồng" value={tenantStats.contracts.toString()} label="Hợp đồng đang hoạt động" />
-            <MetricCard title="⏰ Hóa đơn đến hạn" value={tenantStats.upcomingInvoices.toString()} label="Chưa thanh toán" />
-            <MetricCard title="💰 Đã trả" value={`${tenantStats.totalPaid.toLocaleString()} VNĐ`} label="Tổng đã thanh toán" />
-          </div>
-          <div className="quick-grid">
-            <Link to="/tenant/rooms" className="quick-card-link">
-              <div className="quick-card">
-                <div className="icon">🏠</div>
-                <h3>Phòng của tôi</h3>
-                <p className="text-muted">Xem thông tin phòng đang thuê</p>
-              </div>
-            </Link>
-            <Link to="/tenant/contracts" className="quick-card-link">
-              <div className="quick-card">
-                <div className="icon">📋</div>
-                <h3>Hợp đồng</h3>
-                <p className="text-muted">Chi tiết hợp đồng thuê</p>
-              </div>
-            </Link>
-            <Link to="/tenant/invoices" className="quick-card-link">
-              <div className="quick-card">
-                <div className="icon">💳</div>
-                <h3>Thanh toán</h3>
-                <p className="text-muted">Hóa đơn & thanh toán nhanh</p>
-              </div>
-            </Link>
-            <Link to="/tenant/profile" className="quick-card-link">
-              <div className="quick-card">
-                <div className="icon">👤</div>
-                <h3>Hồ sơ cá nhân</h3>
-                <p className="text-muted">Cập nhật thông tin liên hệ</p>
-              </div>
-            </Link>
-          </div>
-        </>
       ) : (
-        <div className="panel">Chưa có dữ liệu.</div>
+        <div className="panel">Chưa có dữ liệu thống kê.</div>
       )}
     </div>
   );

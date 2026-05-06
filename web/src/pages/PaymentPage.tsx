@@ -1,11 +1,11 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createPayment, fetchInvoiceById, fetchPaymentsByInvoice, getQrHoaDon } from '../api/api';
-import { Invoice, Payment } from '../types';
+import { createPayment, fetchInvoiceById, fetchPaymentsByInvoice, fetchVietQR } from '../api/api';
+import { Invoice, Payment, VietQRResponse, User } from '../types';
 
 const PAYMENT_METHODS = ['tiền mặt', 'VietQR - Chuyển khoản'];
 
-export default function PaymentPage() {
+export default function PaymentPage({ user }: { user: User }) {
   const { invoiceId } = useParams();
   const navigate = useNavigate();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -16,7 +16,10 @@ export default function PaymentPage() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [totalPaid, setTotalPaid] = useState(0);
-  const [qrData, setQrData] = useState<any>(null);
+
+  // VietQR state
+  const [vietQrData, setVietQrData] = useState<VietQRResponse | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
 
   useEffect(() => {
     if (!invoiceId) return;
@@ -29,20 +32,20 @@ export default function PaymentPage() {
         setPayments(paymentsData);
         const total = paymentsData.reduce((sum, p) => sum + p.so_tien, 0);
         setTotalPaid(total);
+        setAmount((invoiceData.tong_tien - total).toString());
       })
       .catch(() => {});
   }, [invoiceId]);
 
   useEffect(() => {
-    const isPaid = invoice ? invoice.tong_tien - totalPaid <= 0 : false;
-    if (method === 'VietQR - Chuyển khoản' && invoiceId && !isPaid) {
-      getQrHoaDon(Number(invoiceId))
-        .then(res => setQrData(res.thanh_toan))
-        .catch(err => setQrData({ error: err.message }));
-    } else {
-      setQrData(null);
+    if (method === 'VietQR - Chuyển khoản' && invoiceId) {
+      setQrLoading(true);
+      fetchVietQR(Number(invoiceId))
+        .then(data => setVietQrData(data))
+        .catch(err => setError(err instanceof Error ? err.message : 'Không thể lấy thông tin VietQR'))
+        .finally(() => setQrLoading(false));
     }
-  }, [method, invoiceId, invoice, totalPaid]);
+  }, [method, invoiceId]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -71,7 +74,7 @@ export default function PaymentPage() {
       setSuccess(response.message || 'Thanh toán thành công');
       setAmount('');
       
-      // Refresh payments and invoice
+      // Refresh
       const [updatedInvoice, updatedPayments] = await Promise.all([
         fetchInvoiceById(Number(invoiceId)),
         fetchPaymentsByInvoice(Number(invoiceId))
@@ -81,7 +84,7 @@ export default function PaymentPage() {
       const newTotal = updatedPayments.reduce((sum, p) => sum + p.so_tien, 0);
       setTotalPaid(newTotal);
       
-      setTimeout(() => navigate(`/invoices/${invoiceId}`), 1500);
+      setTimeout(() => navigate(`/invoices/${invoiceId}`), 1000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể thanh toán');
     } finally {
@@ -97,150 +100,142 @@ export default function PaymentPage() {
       <div className="section-title">
         <div>
           <h2>Thanh toán hóa đơn</h2>
-          <p className="text-muted">Ghi nhận thanh toán mới cho hóa đơn.</p>
+          <p className="text-muted">Ghi nhận hoặc thực hiện thanh toán hóa đơn.</p>
         </div>
       </div>
 
-      <div className="card" style={{ maxWidth: 560 }}>
-        <div style={{
-          padding: '16px',
-          backgroundColor: isPaid ? '#ecfdf5' : '#fef3c7',
-          border: `2px solid ${isPaid ? '#10b981' : '#f59e0b'}`,
-          borderRadius: '8px',
-          marginBottom: '20px'
-        }}>
-          <p style={{ margin: '0 0 12px 0', fontWeight: 'bold' }}>
-            {isPaid ? '✅ Hóa đơn đã thanh toán đủ' : '⏳ Hóa đơn chưa thanh toán đủ'}
-          </p>
-          <div style={{ display: 'grid', gap: '8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Tổng tiền:</span>
-              <strong>{invoice?.tong_tien.toLocaleString() || 0} VNĐ</strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
-              <span>Đã thanh toán:</span>
-              <strong>{totalPaid.toLocaleString()} VNĐ</strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: isPaid ? '#059669' : '#dc2626' }}>
-              <span>Còn lại:</span>
-              <strong>{remaining.toLocaleString()} VNĐ</strong>
-            </div>
-          </div>
-        </div>
-
-        {/* Payment History */}
-        {payments.length > 0 && (
-          <div style={{ marginBottom: '20px' }}>
-            <h4>Lịch sử thanh toán ({payments.length})</h4>
-            <div style={{
-              display: 'grid',
-              gap: '8px',
-              maxHeight: '200px',
-              overflowY: 'auto',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              padding: '12px'
-            }}>
-              {payments.map((payment) => (
-                <div key={payment.id_thanh_toan} style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  paddingBottom: '8px',
-                  borderBottom: '1px solid #e5e7eb'
-                }}>
-                  <div>
-                    <strong>{payment.hinh_thuc}</strong>
-                    <br />
-                    <small style={{ color: '#666' }}>
-                      {new Date(payment.ngay_thanh_toan).toLocaleDateString('vi-VN')}
-                    </small>
-                  </div>
-                  <div style={{ textAlign: 'right', color: '#10b981' }}>
-                    <strong>{payment.so_tien.toLocaleString()} VNĐ</strong>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!isPaid ? (
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16 }}>
-            <div>
-              <label htmlFor="amount">Số tiền cần thanh toán</label>
-              <input
-                id="amount"
-                type="number"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                placeholder={remaining.toString()}
-                max={remaining}
-                required
-              />
-              <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
-                Tối đa: {remaining.toLocaleString()} VNĐ
-              </small>
-            </div>
-            <div>
-              <label htmlFor="method">Hình thức thanh toán</label>
-              <select id="method" value={method} onChange={(event) => setMethod(event.target.value)}>
-                {PAYMENT_METHODS.map((item) => (
-                  <option key={item} value={item}>{item}</option>
-                ))}
-              </select>
-            </div>
-
-            {method === 'VietQR - Chuyển khoản' && qrData && (
-              <div style={{ textAlign: 'center', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-                {qrData.error ? (
-                  <p style={{ color: 'red' }}>{qrData.error}</p>
-                ) : (
-                  <>
-                    <h4>Quét mã để thanh toán</h4>
-                    <img src={qrData.qr_url} alt="VietQR" style={{ width: '100%', maxWidth: '250px', borderRadius: '8px', margin: '0 auto' }} />
-                    <div style={{ textAlign: 'left', marginTop: '16px', fontSize: '14px' }}>
-                      <p><strong>Ngân hàng:</strong> {qrData.bank}</p>
-                      <p><strong>STK:</strong> {qrData.account_number}</p>
-                      <p><strong>Nội dung:</strong> {qrData.content}</p>
-                      <ul style={{ paddingLeft: '20px', marginTop: '8px', color: '#666' }}>
-                        {qrData.huong_dan?.map((hd: string, i: number) => (
-                          <li key={i}>{hd}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {error ? <div style={{ color: '#b91c1c', fontWeight: 600 }}>{error}</div> : null}
-            {success ? <div style={{ color: '#0f766e', fontWeight: 600 }}>{success}</div> : null}
-            <button type="submit" className="button button-primary" disabled={loading}>
-              {loading ? 'Đang xử lý...' : 'Xác nhận thanh toán'}
-            </button>
-          </form>
-        ) : (
+      <div className="grid-2" style={{ gap: 24, alignItems: 'start' }}>
+        <div className="card shadow-sm">
           <div style={{
             padding: '16px',
-            backgroundColor: '#f0fdf4',
-            border: '1px solid #bbf7d0',
+            backgroundColor: isPaid ? '#ecfdf5' : '#fef3c7',
+            border: `1px solid ${isPaid ? '#10b981' : '#f59e0b'}`,
             borderRadius: '8px',
-            textAlign: 'center'
+            marginBottom: '20px'
           }}>
-            <p style={{ margin: 0, color: '#166534' }}>
-              ✅ Hóa đơn đã được thanh toán đầy đủ.
+            <p style={{ margin: '0 0 12px 0', fontWeight: 'bold', fontSize: '1.1rem' }}>
+              {isPaid ? '✅ Hóa đơn đã tất toán' : '⏳ Hóa đơn còn nợ'}
             </p>
+            <div style={{ display: 'grid', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Tổng tiền:</span>
+                <strong>{invoice?.tong_tien.toLocaleString() || 0} VNĐ</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
+                <span>Đã trả:</span>
+                <strong>{totalPaid.toLocaleString()} VNĐ</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: isPaid ? '#059669' : '#dc2626' }}>
+                <span>Dư nợ:</span>
+                <strong style={{ fontSize: '1.2rem' }}>{remaining.toLocaleString()} VNĐ</strong>
+              </div>
+            </div>
           </div>
-        )}
 
-        <button 
-          type="button" 
-          className="button button-secondary"
-          onClick={() => navigate(`/invoices/${invoiceId}`)}
-          style={{ marginTop: '16px', width: '100%' }}
-        >
-          Quay lại chi tiết hóa đơn
-        </button>
+          {!isPaid ? (
+            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16 }}>
+              <div>
+                <label>Hình thức thanh toán</label>
+                <select value={method} onChange={(event) => setMethod(event.target.value)}>
+                  {PAYMENT_METHODS.map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label>Số tiền thanh toán (VNĐ)</label>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
+                  placeholder={remaining.toString()}
+                  max={remaining}
+                  required
+                />
+              </div>
+              
+              {error && <div style={{ color: '#b91c1c', padding: '8px', backgroundColor: '#fef2f2', borderRadius: 4 }}>{error}</div>}
+              {success && <div style={{ color: '#0f766e', padding: '8px', backgroundColor: '#f0fdf4', borderRadius: 4 }}>{success}</div>}
+              
+              <button type="submit" className="button button-primary" disabled={loading} style={{ padding: '12px' }}>
+                {loading ? 'Đang xử lý...' : method.includes('VietQR') ? 'Xác nhận đã chuyển khoản' : 'Xác nhận thanh toán'}
+              </button>
+            </form>
+          ) : (
+            <div style={{ padding: '16px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', textAlign: 'center' }}>
+              <p style={{ margin: 0, color: '#166534' }}>✅ Hóa đơn đã hoàn tất thanh toán.</p>
+            </div>
+          )}
+
+          <button 
+            type="button" 
+            className="button button-secondary"
+            onClick={() => navigate(-1)}
+            style={{ marginTop: '16px', width: '100%', border: 'none', background: 'transparent', color: '#666' }}
+          >
+            ← Quay lại
+          </button>
+        </div>
+
+        {/* Cột QR hoặc Lịch sử */}
+        <div style={{ display: 'grid', gap: 24 }}>
+          {method === 'VietQR - Chuyển khoản' && !isPaid && (
+            <div className="card shadow-sm" style={{ textAlign: 'center', border: '2px solid #2563eb' }}>
+              <h3>Quét mã QR để thanh toán</h3>
+              {qrLoading ? (
+                <div style={{ padding: 40 }}>Đang tạo mã QR...</div>
+              ) : vietQrData ? (
+                <div style={{ marginTop: 16 }}>
+                  <img 
+                    src={vietQrData.thanh_toan.qr_url} 
+                    alt="VietQR" 
+                    style={{ maxWidth: 280, width: '100%', height: 'auto', marginBottom: 16 }}
+                  />
+                  <div style={{ textAlign: 'left', backgroundColor: '#f8fafc', padding: 16, borderRadius: 8, fontSize: '0.9rem' }}>
+                    <p><strong>Ngân hàng:</strong> {vietQrData.thanh_toan.ma_ngan_hang}</p>
+                    <p><strong>Chủ TK:</strong> {vietQrData.thanh_toan.ten_nguoi_nhan}</p>
+                    <p><strong>Số TK:</strong> {vietQrData.thanh_toan.so_tai_khoan}</p>
+                    <p><strong>Số tiền:</strong> <span style={{ color: '#2563eb', fontWeight: 'bold' }}>{vietQrData.thanh_toan.so_tien.toLocaleString()} VNĐ</span></p>
+                    <p><strong>Nội dung:</strong> <span style={{ color: '#d97706', fontWeight: 'bold' }}>{vietQrData.thanh_toan.noi_dung}</span></p>
+                    
+                    <div style={{ marginTop: 12, borderTop: '1px solid #e2e8f0', paddingTop: 12 }}>
+                      {vietQrData.thanh_toan.huong_dan.map((hd, idx) => (
+                        <p key={idx} style={{ margin: '4px 0', fontSize: '0.8rem', color: '#64748b' }}>{hd}</p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="panel" style={{ color: '#b91c1c' }}>Không thể tải mã QR. Quay lại sau.</div>
+              )}
+            </div>
+          )}
+
+          {payments.length > 0 && (
+            <div className="card shadow-sm">
+              <h4 style={{ marginBottom: 16 }}>Lịch sử giao dịch</h4>
+              <div style={{ display: 'grid', gap: '12px' }}>
+                {payments.map((payment) => (
+                  <div key={payment.id_thanh_toan} style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    padding: '12px',
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '8px'
+                  }}>
+                    <div>
+                      <strong>{payment.hinh_thuc}</strong>
+                      <div style={{ color: '#64748b', fontSize: '0.85rem' }}>{new Date(payment.ngay_thanh_toan).toLocaleString('vi-VN')}</div>
+                    </div>
+                    <div style={{ textAlign: 'right', color: '#10b981', fontWeight: 'bold' }}>
+                      +{payment.so_tien.toLocaleString()} VNĐ
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

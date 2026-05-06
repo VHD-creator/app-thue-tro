@@ -1,11 +1,11 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchRooms } from '../api/api';
-import { Room, RoomImage } from '../types';
+import { Room, User } from '../types';
 
-export default function RoomListPage() {
-  const { isLandlord, isTenant } = useAuth();
+export default function RoomListPage({ user }: { user: User }) {
+  const isLandlord = user.vai_tro === 'CHU_TRO' || user.vai_tro === 'ADMIN';
+  const isTenant = user.vai_tro === 'NGUOI_THUE';
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -78,7 +78,7 @@ export default function RoomListPage() {
                   <th>Giá</th>
                   <th>Trạng thái</th>
                   <th>Chủ trọ</th>
-                  <th>{isLandlord ? 'Thao tác' : 'Hành động'}</th>
+                  <th>Hành động</th>
                 </tr>
               </thead>
               <tbody>
@@ -111,16 +111,14 @@ export default function RoomListPage() {
                         <Link to={`/rooms/${room.id_phong}`} className="button button-small button-secondary">
                           Xem
                         </Link>
-                        {isLandlord ? (
+                        {isLandlord && (
                           <>
                             <Link to={`/rooms/${room.id_phong}/edit`} className="button button-small button-primary">
                               Sửa
                             </Link>
-                            <button className="button button-small button-danger" onClick={() => {/* delete logic */}}>
-                              Xóa
-                            </button>
                           </>
-                        ) : (
+                        )}
+                        {!isLandlord && room.trang_thai === 0 && (
                           <Link to={`/rooms/${room.id_phong}`} className="button button-small button-success">
                             Thuê ngay
                           </Link>

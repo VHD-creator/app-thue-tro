@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchInvoices } from '../api/api';
-import { Invoice } from '../types';
-import { useAuth } from '../hooks/useAuth';
+import { fetchInvoices, fetchMyInvoices } from '../api/api';
+import { Invoice, User } from '../types';
 
 const statusClass = (status: number) => {
   switch (status) {
@@ -15,8 +14,8 @@ const statusClass = (status: number) => {
   }
 };
 
-export default function InvoiceListPage() {
-  const { isTenant } = useAuth();
+export default function InvoiceListPage({ user }: { user: User }) {
+  const isTenant = user.vai_tro === 'NGUOI_THUE';
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
@@ -37,11 +36,13 @@ export default function InvoiceListPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetchInvoices()
+    const apiCall = isTenant ? fetchMyInvoices() : fetchInvoices();
+
+    apiCall
       .then(setInvoices)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Không tải được hóa đơn'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Không tải được hóa đơn'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [isTenant]);
 
   return (
     <div>

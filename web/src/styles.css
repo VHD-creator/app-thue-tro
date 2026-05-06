@@ -12,6 +12,28 @@
   --shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
 }
 
+/* 🏢 Landlord Persona (Default Blue) */
+.role-chu_tro {
+  --primary: #2563eb;
+  --primary-strong: #1d4ed8;
+}
+
+/* 🏠 Tenant Persona (Indigo/Cyan) */
+.role-nguoi_thue {
+  --primary: #6366f1; /* Indigo 500 */
+  --primary-strong: #4f46e5; /* Indigo 600 */
+  --surface-alt: #f1f5f9;
+}
+
+.role-nguoi_thue .sidenav {
+  background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%); /* Deep Indigo */
+}
+
+.role-nguoi_thue .quick-card {
+  background: #f0f9ff;
+  border: 1px solid #e0f2fe;
+}
+
 * {
   box-sizing: border-box;
 }

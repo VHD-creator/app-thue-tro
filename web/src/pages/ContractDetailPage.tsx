@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { fetchContractById } from '../api/api';
-import { Contract } from '../types';
-import { useAuth } from '../hooks/useAuth';
+import { Contract, User } from '../types';
 import { formatDate, formatCurrency } from '../utils';
 
-export default function ContractDetailPage() {
-  const { isTenant } = useAuth();
+export default function ContractDetailPage({ user }: { user: User }) {
+  const isTenant = user.vai_tro === 'NGUOI_THUE';
   const { id } = useParams();
+  const navigate = useNavigate();
   const [contract, setContract] = useState<Contract | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -60,9 +60,9 @@ export default function ContractDetailPage() {
           <button className="button button-primary" onClick={handleDownloadPdf} style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#10b981' }}>
             📄 Tải Bản In (PDF)
           </button>
-          <Link className="button button-secondary" to="/contracts">
+          <button className="button button-secondary" onClick={() => navigate(-1)}>
             Quay lại
-          </Link>
+          </button>
           {!isTenant && (
             <Link className="button button-primary" to={`/contracts/${id}/edit`}>
               Sửa hợp đồng
@@ -99,4 +99,4 @@ export default function ContractDetailPage() {
       )}
     </div>
   );
-}
+}
