@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { HinhAnhPhong, Phong } from '../models/quanHe.js';
 import {
   verifyToken,
+  loadChuTro,
   requireChuTroOrAdmin,
   requireChuTroVerified,
   checkPhongOwnership
@@ -62,6 +63,7 @@ router.get('/:id_hinh_anh', async (req, res) => {
 router.post('/phong/:id_phong',
   verifyToken,
   requireChuTroOrAdmin,
+  loadChuTro,
   requireChuTroVerified,
   checkPhongOwnership,
   uploadSingle,
@@ -130,6 +132,7 @@ router.post('/phong/:id_phong',
 router.post('/phong/:id_phong/multiple',
   verifyToken,
   requireChuTroOrAdmin,
+  loadChuTro,
   requireChuTroVerified,
   checkPhongOwnership,
   uploadMultiple,
@@ -206,6 +209,7 @@ router.post('/phong/:id_phong/multiple',
 router.put('/:id_hinh_anh/set-dai-dien',
   verifyToken,
   requireChuTroOrAdmin,
+  loadChuTro,
   async (req, res) => {
     try {
       const hinhAnh = await HinhAnhPhong.findByPk(req.params.id_hinh_anh, {
@@ -242,6 +246,7 @@ router.put('/:id_hinh_anh/set-dai-dien',
 router.put('/:id_hinh_anh',
   verifyToken,
   requireChuTroOrAdmin,
+  loadChuTro,
   async (req, res) => {
     try {
       const hinhAnh = await HinhAnhPhong.findByPk(req.params.id_hinh_anh, {
@@ -286,6 +291,7 @@ router.put('/:id_hinh_anh',
 router.delete('/phong/:id_phong',
   verifyToken,
   requireChuTroOrAdmin,
+  loadChuTro,
   checkPhongOwnership,
   async (req, res) => {
     try {
@@ -318,6 +324,7 @@ router.delete('/phong/:id_phong',
 router.delete('/:id_hinh_anh',
   verifyToken,
   requireChuTroOrAdmin,
+  loadChuTro,
   async (req, res) => {
     try {
       const hinhAnh = await HinhAnhPhong.findByPk(req.params.id_hinh_anh, {

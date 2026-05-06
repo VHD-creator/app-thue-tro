@@ -38,10 +38,11 @@ router.put('/profile', verifyToken, requireAuthenticated, async (req, res) => {
     const nguoiThue = await NguoiThue.findOne({ where: { id_tai_khoan: req.userId } });
     if (!nguoiThue) return res.status(404).json({ error: 'Không tìm thấy thông tin người thuê' });
 
-    const { ho_ten, so_dien_thoai, email } = req.body;
+    const { ho_ten, so_dien_thoai, email, cccd } = req.body;
     if (ho_ten) nguoiThue.ho_ten = ho_ten;
     if (so_dien_thoai) nguoiThue.so_dien_thoai = so_dien_thoai;
     if (email) nguoiThue.email = email;
+    if (cccd) nguoiThue.cccd = cccd;
     await nguoiThue.save();
 
     res.json({ message: 'Cập nhật thông tin thành công', data: nguoiThue });

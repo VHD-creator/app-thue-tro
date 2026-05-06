@@ -2,6 +2,7 @@ import express from 'express';
 import { ChuTro, Phong } from '../models/quanHe.js';
 import {
   verifyToken,
+  loadChuTro,
   requireChuTroOrAdmin,
   requireAdmin
 } from '../middlewares/auth.js';
@@ -13,7 +14,7 @@ const router = express.Router();
 // ==================== CHỦ TRỌ ====================
 
 // GET /api/chuTro/profile - Chủ trọ xem thông tin cá nhân
-router.get('/profile', verifyToken, requireChuTroOrAdmin, async (req, res) => {
+router.get('/profile', verifyToken, requireChuTroOrAdmin, loadChuTro, async (req, res) => {
   try {
     const chuTro = await ChuTro.findOne({ where: { id_tai_khoan: req.userId } });
     if (!chuTro) return res.status(404).json({ error: 'Không tìm thấy thông tin chủ trọ' });
@@ -48,20 +49,79 @@ router.put('/profile', verifyToken, requireChuTroOrAdmin, async (req, res) => {
   }
 });
 
+// POST /api/chuTro/profile/verify - Chủ trọ gửi yêu cầu xác thực tài khoản
+router.post('/profile/verify', verifyToken, requireChuTroOrAdmin, async (req, res) => {
+  try {
+    const chuTro = await ChuTro.findOne({ where: { id_tai_khoan: req.userId } });
+    if (!chuTro) return res.status(404).json({ error: 'Không tìm thấy thông tin chủ trọ' });
+
+    if (chuTro.verification_status === 1) {
+      return res.status(400).json({ error: 'Yêu cầu của bạn đang được xử lý, vui lòng chờ' });
+    }
+    if (chuTro.verification_status === 2) {
+      return res.status(400).json({ error: 'Tài khoản của bạn đã được xác thực' });
+    }
+
+    chuTro.verification_status = 1; // Chuyển sang chờ duyệt
+    await chuTro.save();
+
+    res.json({ message: 'Gửi yêu cầu xác thực thành công. Admin sẽ sớm duyệt hồ sơ của bạn' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ==================== ADMIN ====================
 
 // GET /api/chuTro - Admin xem danh sách tất cả chủ trọ
 router.get('/', verifyToken, requireAdmin, async (req, res) => {
   try {
-    const chuTros = await ChuTro.findAll({ order: [['ngay_tao', 'DESC']] });
+    const { status } = req.query;
+    const where = {};
+    if (status !== undefined) where.verification_status = status;
+
+    const chuTros = await ChuTro.findAll({ 
+      where,
+      order: [['ngay_tao', 'DESC']] 
+    });
     res.json(chuTros);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
+// PUT /api/chuTro/:id_chu_tro/approve-verification - Admin duyệt xác thực
+router.put('/:id_chu_tro/approve-verification', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id_chu_tro;
+    if (!id || id === 'undefined') {
+      return res.status(400).json({ error: 'ID chủ trọ không hợp lệ' });
+    }
+
+    const { approve } = req.body;
+    const chuTro = await ChuTro.findByPk(id);
+    if (!chuTro) return res.status(404).json({ error: 'Chủ trọ không tồn tại' });
+
+    if (approve) {
+      chuTro.verification_status = 2; // Đã xác thực
+      chuTro.email_verified = true;  // Giả lập xác thực email/SĐT luôn khi admin duyệt
+      chuTro.phone_verified = true;
+    } else {
+      chuTro.verification_status = 3; // Bị từ chối
+    }
+
+    await chuTro.save();
+    res.json({ 
+      message: approve ? 'Duyệt xác thực thành công' : 'Đã từ chối yêu cầu xác thực',
+      data: chuTro 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET /api/chuTro/:id_chu_tro - Chi tiết chủ trọ (PHẢI đặt SAU /profile)
-router.get('/:id_chu_tro', verifyToken, requireChuTroOrAdmin, async (req, res) => {
+router.get('/:id_chu_tro', verifyToken, requireChuTroOrAdmin, loadChuTro, async (req, res) => {
   try {
     // Chủ trọ chỉ xem được thông tin của mình
     if (req.userRole === 'CHU_TRO' && parseInt(req.params.id_chu_tro) !== req.idChuTro) {

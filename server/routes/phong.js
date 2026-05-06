@@ -1,9 +1,10 @@
 import express from 'express';
 import { Op } from 'sequelize';
-import { Phong, ChuTro, HoaDon, HopDong, NguoiThue } from '../models/quanHe.js';
+import { Phong, ChuTro, HoaDon, HopDong, NguoiThue, HinhAnhPhong } from '../models/quanHe.js';
 import { 
   optionalAuth,
   verifyToken,
+  loadChuTro,
   requireChuTroOrAdmin,
   requireChuTroVerified,
   checkPhongOwnership
@@ -62,13 +63,11 @@ router.get('/cua-toi', verifyToken, async (req, res) => {
       return res.status(403).json({ error: 'Chỉ người thuê mới sử dụng API này' });
     }
 
-    const NguoiThueModel = (await import('../models/NguoiThue.js')).default;
-    const nguoiThue = await NguoiThueModel.findOne({ where: { id_tai_khoan: req.userId } });
+    const nguoiThue = await NguoiThue.findOne({ where: { id_tai_khoan: req.userId } });
 
     if (!nguoiThue) return res.status(404).json({ error: 'Không tìm thấy hồ sơ người thuê' });
 
-    const HopDongModel = (await import('../models/HopDong.js')).default;
-    const activeContract = await HopDongModel.findOne({
+    const activeContract = await HopDong.findOne({
       where: { id_nguoi_thue: nguoiThue.id_nguoi_thue, trang_thai: 1 }
     });
 
@@ -105,12 +104,10 @@ router.get('/:id_phong', optionalAuth, async (req, res) => {
 
     // Người thuê chỉ xem được dữ liệu của chính mình
     if (req.userRole === 'NGUOI_THUE' && req.userId) {
-      const NguoiThueModel = (await import('../models/NguoiThue.js')).default;
-      const nguoiThue = await NguoiThueModel.findOne({ where: { id_tai_khoan: req.userId } });
+      const nguoiThue = await NguoiThue.findOne({ where: { id_tai_khoan: req.userId } });
 
       if (nguoiThue) {
-        const HopDongModel = (await import('../models/HopDong.js')).default;
-        hopDongs = await HopDongModel.findAll({
+        hopDongs = await HopDong.findAll({
           where: { 
             id_phong: roomId, 
             id_nguoi_thue: nguoiThue.id_nguoi_thue 
@@ -119,8 +116,7 @@ router.get('/:id_phong', optionalAuth, async (req, res) => {
           order: [['ngay_bat_dau', 'DESC']]
         });
 
-        const HoaDonModel = (await import('../models/HoaDon.js')).default;
-        hoaDons = await HoaDonModel.findAll({
+        hoaDons = await HoaDon.findAll({
           where: { id_phong: roomId },
           order: [['ngay_tao', 'DESC']]
         });
@@ -128,16 +124,13 @@ router.get('/:id_phong', optionalAuth, async (req, res) => {
     } 
     // Chủ trọ và Admin xem đầy đủ
     else if (req.userRole === 'CHU_TRO' || req.userRole === 'ADMIN') {
-      const HopDongModel = (await import('../models/HopDong.js')).default;
-      const HoaDonModel = (await import('../models/HoaDon.js')).default;
-
-      hopDongs = await HopDongModel.findAll({
+      hopDongs = await HopDong.findAll({
         where: { id_phong: roomId },
         include: [{ model: NguoiThue, as: 'NguoiThue', attributes: ['ho_ten'] }],
         order: [['ngay_bat_dau', 'DESC']]
       });
 
-      hoaDons = await HoaDonModel.findAll({
+      hoaDons = await HoaDon.findAll({
         where: { id_phong: roomId },
         order: [['ngay_tao', 'DESC']]
       });
@@ -167,18 +160,16 @@ router.get('/', optionalAuth, async (req, res) => {
       if (chuTro) {
         whereCondition.id_chu_tro = chuTro.id_chu_tro;
       } else {
-        // Nếu là CHU_TRO nhưng chưa có profile, không trả về gì để bảo mật
         return res.json([]);
       }
-    } else if (req.userRole !== 'ADMIN') {
-      // Khách hoặc Người thuê: Chỉ xem các phòng đang trống (Available)
-      // whereCondition.trang_thai = 0; // Tạm thời để họ xem tất cả phòng Active để test, 
-      // nhưng tốt nhất là chỉ xem phòng trống
     }
 
     const data = await Phong.findAll({ 
       where: whereCondition,
-      include: [{ model: ChuTro, as: 'ChuTro', attributes: ['ho_ten', 'so_dien_thoai', 'dia_chi'] }]
+      include: [
+        { model: ChuTro, as: 'ChuTro', attributes: ['ho_ten', 'so_dien_thoai', 'dia_chi'] },
+        { model: HinhAnhPhong, as: 'DanhSachHinhAnh', attributes: ['id_hinh_anh', 'duong_dan', 'la_anh_dai_dien'] }
+      ]
     });
 
     res.json(data);
@@ -188,7 +179,7 @@ router.get('/', optionalAuth, async (req, res) => {
 });
 
 // POST /api/phong - Tạo phòng mới
-router.post('/', verifyToken, requireChuTroOrAdmin, requireChuTroVerified, async (req, res) => {
+router.post('/', verifyToken, requireChuTroOrAdmin, loadChuTro, requireChuTroVerified, async (req, res) => {
   try {
     const { id_chu_tro, ten_phong, gia_phong, mo_ta } = req.body;
 
@@ -227,7 +218,7 @@ router.post('/', verifyToken, requireChuTroOrAdmin, requireChuTroVerified, async
 });
 
 // PUT /api/phong/:id_phong
-router.put('/:id_phong', verifyToken, requireChuTroOrAdmin, checkPhongOwnership, async (req, res) => {
+router.put('/:id_phong', verifyToken, requireChuTroOrAdmin, loadChuTro, checkPhongOwnership, async (req, res) => {
   try {
     const room = await Phong.findByPk(req.params.id_phong);
     if (!room) return res.status(404).json({ error: 'Phòng không tồn tại' });
@@ -257,7 +248,7 @@ router.put('/:id_phong', verifyToken, requireChuTroOrAdmin, checkPhongOwnership,
 });
 
 // DELETE /api/phong/:id_phong
-router.delete('/:id_phong', verifyToken, requireChuTroOrAdmin, checkPhongOwnership, async (req, res) => {
+router.delete('/:id_phong', verifyToken, requireChuTroOrAdmin, loadChuTro, checkPhongOwnership, async (req, res) => {
   try {
     const room = await Phong.findByPk(req.params.id_phong);
     if (!room) return res.status(404).json({ error: 'Phòng không tồn tại' });
@@ -270,6 +261,35 @@ router.delete('/:id_phong', verifyToken, requireChuTroOrAdmin, checkPhongOwnersh
     await room.save();
     
     res.json({ message: 'Xóa phòng thành công', id_phong: parseInt(req.params.id_phong) });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/phong/:id_phong/hop-dong - Danh sách hợp đồng của phòng
+router.get('/:id_phong/hop-dong', verifyToken, async (req, res) => {
+  try {
+    const roomId = req.params.id_phong;
+    const hopDongs = await HopDong.findAll({
+      where: { id_phong: roomId },
+      include: [{ model: NguoiThue, as: 'NguoiThue', attributes: ['ho_ten'] }],
+      order: [['ngay_bat_dau', 'DESC']]
+    });
+    res.json({ data: hopDongs });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/phong/:id_phong/hoa-don - Danh sách hóa đơn của phòng
+router.get('/:id_phong/hoa-don', verifyToken, async (req, res) => {
+  try {
+    const roomId = req.params.id_phong;
+    const hoaDons = await HoaDon.findAll({
+      where: { id_phong: roomId },
+      order: [['ngay_tao', 'DESC']]
+    });
+    res.json({ data: hoaDons });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

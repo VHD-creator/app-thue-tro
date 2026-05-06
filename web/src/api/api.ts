@@ -374,6 +374,28 @@ export async function updateProfile(role: string, body: ProfileUpdatePayload): P
   });
 }
 
+export async function requestVerification(): Promise<any> {
+  return fetchJson<any>(`${BASE_URL}/chuTro/profile/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+  });
+}
+
+export async function fetchLandlords(status?: number): Promise<Tenant[]> {
+  const query = status !== undefined ? `?status=${status}` : '';
+  return fetchJson<any[]>(`${BASE_URL}/chuTro${query}`, {
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+  });
+}
+
+export async function approveLandlord(id: number, approve: boolean): Promise<any> {
+  return fetchJson<any>(`${BASE_URL}/chuTro/${id}/approve-verification`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ approve })
+  });
+}
+
 // ==================== YÊU CẦU THUÊ ====================
 
 export async function fetchRentRequests(status?: number): Promise<RentRequest[]> {

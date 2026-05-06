@@ -204,10 +204,10 @@ export default function RoomDetailPage({ user }: Props) {
                     <img 
                       src={image.duong_dan.startsWith('http') ? image.duong_dan : `/api${image.duong_dan}`} 
                       alt={image.ten_file} 
-                      style={{ width: '100%', height: 180, objectFit: 'cover', borderRadius: 4 }}
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      style={{ width: '100%', height: 220, objectFit: 'cover', borderRadius: 4 }}
+                      onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=Image+Error'; }}
                     />
-                    <p style={{ marginTop: 8, fontSize: '0.875rem', textAlign: 'center' }}>{image.mo_ta || image.ten_file}</p>
+                    {image.mo_ta && <p style={{ marginTop: 8, fontSize: '0.875rem', textAlign: 'center' }}>{image.mo_ta}</p>}
                   </div>
                 ))}
               </div>
@@ -217,7 +217,7 @@ export default function RoomDetailPage({ user }: Props) {
           {isLandlord && (
             <div className="grid-2" style={{ gap: 16 }}>
               <div className="card shadow-sm">
-                <h3 className="mb-4">📋 Lịch sử hợp đồng</h3>
+                <h3 className="mb-4">Lịch sử hợp đồng</h3>
                 {contracts.length ? (
                   <div className="list-card">
                     {contracts.map((contract) => (
@@ -239,7 +239,7 @@ export default function RoomDetailPage({ user }: Props) {
                 )}
               </div>
               <div className="card shadow-sm">
-                <h3 className="mb-4">🧾 Hóa đơn phòng</h3>
+                <h3 className="mb-4">Hóa đơn phòng</h3>
                 {invoices.length ? (
                   <div className="list-card">
                     {invoices.map((invoice) => (

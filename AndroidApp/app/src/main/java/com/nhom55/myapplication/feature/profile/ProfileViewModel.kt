@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.nhom55.myapplication.core.network.RetrofitInstance
 import com.nhom55.myapplication.feature.auth.UserData
 import com.nhom55.myapplication.feature.auth.ChangePasswordRequest
+import com.nhom55.myapplication.feature.auth.UpdateProfileRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -70,6 +71,46 @@ class ProfileViewModel : ViewModel() {
 
     fun resetChangePasswordState() {
         _changePasswordState.value = ChangePasswordUiState.Idle
+    }
+
+    fun requestVerification() {
+        viewModelScope.launch {
+            try {
+                RetrofitInstance.authApi.requestVerification()
+                // Sau khi gửi thành công, tải lại hồ sơ để cập nhật trạng thái UI
+                loadProfileForce()
+            } catch (e: Exception) {
+                _uiState.value = ProfileUiState.Error("Không thể gửi yêu cầu xác thực")
+            }
+        }
+    }
+
+    private fun loadProfileForce() {
+        _uiState.value = ProfileUiState.Loading
+        viewModelScope.launch {
+            try {
+                val response = RetrofitInstance.authApi.getMe()
+                _uiState.value = ProfileUiState.Success(response.user)
+            } catch (e: Exception) {
+                _uiState.value = ProfileUiState.Error("Lỗi cập nhật trạng thái")
+            }
+        }
+    }
+
+    fun updateProfile(role: String, request: UpdateProfileRequest, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                if (role == "CHU_TRO") {
+                    RetrofitInstance.authApi.updateChuTroProfile(request)
+                } else {
+                    RetrofitInstance.authApi.updateNguoiThueProfile(request)
+                }
+                loadProfileForce()
+                onSuccess()
+            } catch (e: Exception) {
+                _uiState.value = ProfileUiState.Error("Không thể cập nhật hồ sơ")
+            }
+        }
     }
 
     private fun parseErrorMessage(errorBody: String?): String? {

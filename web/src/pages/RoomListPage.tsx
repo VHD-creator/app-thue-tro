@@ -5,7 +5,6 @@ import { Room, User } from '../types';
 
 export default function RoomListPage({ user }: { user: User }) {
   const isLandlord = user.vai_tro === 'CHU_TRO' || user.vai_tro === 'ADMIN';
-  const isTenant = user.vai_tro === 'NGUOI_THUE';
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -28,110 +27,108 @@ export default function RoomListPage({ user }: { user: User }) {
     });
   }, [rooms, searchTerm, filterStatus]);
 
-  if (loading) return <div className="panel">Đang tải danh sách phòng...</div>;
-  if (error) return <div className="panel error">Lỗi: {error}</div>;
+  if (loading) return <div className="panel animate-pulse">Đang tải danh sách phòng...</div>;
+  if (error) return <div className="panel error" style={{ color: '#b91c1c' }}>Lỗi: {error}</div>;
 
   return (
-    <div>
+    <div className="fade-in">
       <div className="section-title">
         <div>
-          <h2>{isLandlord ? 'Quản lý phòng trọ' : 'Danh sách phòng trọ'}</h2>
+          <h2>{isLandlord ? 'Quản lý phòng trọ' : 'Khám phá phòng trọ'}</h2>
           <p className="text-muted">
-            {isLandlord ? 'Xem và quản lý tất cả phòng trọ của bạn.' : 'Tìm phòng trọ phù hợp.'}
+            {isLandlord 
+              ? `Bạn đang quản lý ${rooms.length} phòng trọ trên hệ thống.` 
+              : 'Tìm kiếm không gian sống lý tưởng phù hợp với nhu cầu của bạn.'}
           </p>
         </div>
         {isLandlord && (
-          <Link to="/rooms/new" className="button button-primary">
-            ➕ Thêm phòng mới
+          <Link to="/rooms/new" className="button button-primary" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>+</span> Thêm phòng mới
           </Link>
         )}
       </div>
 
-      <div className="card">
-        <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-          <input
-            type="text"
-            placeholder="Tìm kiếm theo tên phòng..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ flex: 1, minWidth: 200 }}
-          />
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ minWidth: 140 }}>
-            <option value="all">Tất cả trạng thái</option>
-            <option value="0">Trống</option>
-            <option value="1">Đã cho thuê</option>
-          </select>
+      <div className="card" style={{ padding: '20px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '280px', position: 'relative' }}>
+            <input
+              type="text"
+              placeholder="Tìm theo tên phòng, địa chỉ..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+          </div>
+          <div style={{ minWidth: '180px' }}>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <option value="all">Tất cả trạng thái</option>
+              <option value="0">Phòng trống</option>
+              <option value="1">Đã cho thuê</option>
+            </select>
+          </div>
         </div>
-
-        {filteredRooms.length === 0 ? (
-          <div className="panel text-muted">
-            {isLandlord ? 'Chưa có phòng nào. ' : 'Không tìm thấy phòng phù hợp. '}
-            {isLandlord && <Link to="/rooms/new">Tạo phòng đầu tiên</Link>}
-          </div>
-        ) : (
-          <div className="table-responsive">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Hình ảnh</th>
-                  <th>Tên phòng</th>
-                  <th>Giá</th>
-                  <th>Trạng thái</th>
-                  <th>Chủ trọ</th>
-                  <th>Hành động</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRooms.map((room) => (
-                  <tr key={room.id_phong}>
-                    <td>
-                      <div style={{ width: 60, height: 40, background: '#f0f0f0', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        🏠
-                      </div>
-                    </td>
-                    <td>
-                      <Link to={`/rooms/${room.id_phong}`} style={{ fontWeight: 500 }}>
-                        {room.ten_phong}
-                      </Link>
-                      <p className="text-muted" style={{ fontSize: '0.875rem', margin: 0 }}>
-                        {room.mo_ta || 'Không có mô tả'}
-                      </p>
-                    </td>
-                    <td>
-                      <strong>{room.gia_phong.toLocaleString()} VNĐ</strong>
-                    </td>
-                    <td>
-                      <span className={`status-badge status-${room.trang_thai === 0 ? 'success' : 'warning'}`}>
-                        {room.trang_thai === 0 ? '🟢 Trống' : '🔴 Đã thuê'}
-                      </span>
-                    </td>
-                    <td>{room.ChuTro?.ho_ten || 'N/A'}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <Link to={`/rooms/${room.id_phong}`} className="button button-small button-secondary">
-                          Xem
-                        </Link>
-                        {isLandlord && (
-                          <>
-                            <Link to={`/rooms/${room.id_phong}/edit`} className="button button-small button-primary">
-                              Sửa
-                            </Link>
-                          </>
-                        )}
-                        {!isLandlord && room.trang_thai === 0 && (
-                          <Link to={`/rooms/${room.id_phong}`} className="button button-small button-success">
-                            Thuê ngay
-                          </Link>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
+
+      {filteredRooms.length === 0 ? (
+        <div className="panel text-center" style={{ padding: '60px 20px' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🏘️</div>
+          <h3>Không tìm thấy phòng nào</h3>
+          <p className="text-muted">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm của bạn.</p>
+          {isLandlord && (
+            <Link to="/rooms/new" className="button button-secondary" style={{ marginTop: '16px' }}>
+              Tạo phòng mới ngay
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="room-grid">
+          {filteredRooms.map((room) => {
+            const mainImage = room.DanhSachHinhAnh?.find(img => img.la_anh_dai_dien) || room.DanhSachHinhAnh?.[0];
+            const imageUrl = mainImage 
+              ? (mainImage.duong_dan.startsWith('http') ? mainImage.duong_dan : `/api${mainImage.duong_dan}`)
+              : null;
+
+            return (
+              <Link key={room.id_phong} to={`/rooms/${room.id_phong}`} className="quick-card-link">
+                <div className="room-card">
+                  <div className="room-image-wrapper">
+                    <div className={`room-badge ${room.trang_thai === 0 ? 'status-empty' : 'status-occupied'}`}>
+                      {room.trang_thai === 0 ? 'Trống' : 'Đã thuê'}
+                    </div>
+                    {imageUrl ? (
+                      <img src={imageUrl} alt={room.ten_phong} />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', background: '#f8fafc', color: '#cbd5e1' }}>
+                        <span style={{ fontSize: '3rem' }}>🖼️</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="room-content">
+                    <h3 className="room-title">{room.ten_phong}</h3>
+                    <p className="room-description">
+                      {room.mo_ta || 'Phòng trọ đầy đủ tiện nghi, an ninh đảm bảo, phù hợp cho sinh viên và người đi làm.'}
+                    </p>
+                    
+                    <div className="room-footer">
+                      <div className="room-price">
+                        {room.gia_phong.toLocaleString()} <span>VNĐ/tháng</span>
+                      </div>
+                      
+                      <div className="room-owner" title={`Chủ trọ: ${room.ChuTro?.ho_ten}`}>
+                        <div className="room-owner-avatar">
+                          {room.ChuTro?.ho_ten?.charAt(0) || 'U'}
+                        </div>
+                        <span>{room.ChuTro?.ho_ten?.split(' ').pop() || 'N/A'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -48,6 +48,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object MyRequests : Screen("my_requests", "Yêu cầu của tôi", Icons.Default.MailOutline)
     object LandlordRequests : Screen("landlord_requests", "Duyệt yêu cầu thuê", Icons.Default.CheckCircle)
     object ChatBot : Screen("chatbot", "Trợ lý ảo AI", Icons.Default.Email)
+    object EditProfile : Screen("edit_profile", "Chỉnh sửa hồ sơ", Icons.Default.Edit)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -305,6 +306,9 @@ fun MainScreen() {
                 }
                 composable(Screen.Profile.route) {
                     com.nhom55.myapplication.feature.profile.ProfileScreen(navController = navController)
+                }
+                composable(Screen.EditProfile.route) {
+                    com.nhom55.myapplication.feature.profile.EditProfileScreen(navController = navController)
                 }
                 composable(Screen.UserList.route) {
                     com.nhom55.myapplication.feature.admin.UserListScreen(navController = navController)

@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.nhom55.myapplication.navigation.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,6 +103,64 @@ fun ProfileScreen(
                         )
 
                         Spacer(modifier = Modifier.height(32.dp))
+
+                        // Verification Status Card for Landlord
+                        if (user.vai_tro == "CHU_TRO" && profile != null) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = when (profile.verification_status) {
+                                        2 -> MaterialTheme.colorScheme.primaryContainer
+                                        1 -> MaterialTheme.colorScheme.secondaryContainer
+                                        else -> MaterialTheme.colorScheme.surfaceVariant
+                                    }
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = when (profile.verification_status) {
+                                            2 -> Icons.Default.CheckCircle
+                                            1 -> Icons.Default.Refresh
+                                            3 -> Icons.Default.Warning
+                                            else -> Icons.Default.Info
+                                        },
+                                        contentDescription = null,
+                                        tint = when (profile.verification_status) {
+                                            2 -> MaterialTheme.colorScheme.primary
+                                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = when (profile.verification_status) {
+                                                2 -> "Tài khoản đã xác thực"
+                                                1 -> "Đang chờ Admin duyệt"
+                                                3 -> "Yêu cầu bị từ chối"
+                                                else -> "Chưa xác thực danh tính"
+                                            },
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        if (profile.verification_status == 0 || profile.verification_status == 3) {
+                                            Text(
+                                                "Gửi yêu cầu để được ưu tiên hiển thị",
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+                                    }
+                                    if (profile.verification_status == 0 || profile.verification_status == 3) {
+                                        TextButton(onClick = { viewModel.requestVerification() }) {
+                                            Text("Gửi yêu cầu")
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -122,10 +181,10 @@ fun ProfileScreen(
                                 ProfileDetailItem(icon = Icons.Default.Phone, label = "Số điện thoại", value = phone.ifEmpty { "Chưa cập nhật" })
 
                                 if (user.vai_tro == "NGUOI_THUE") {
-                                    val cccd = user.nguoi_thue?.cccd ?: ""
+                                    val cccd = profile?.cccd ?: ""
                                     ProfileDetailItem(icon = Icons.Default.Info, label = "CCCD", value = cccd.ifEmpty { "Chưa cập nhật" })
                                 } else if (user.vai_tro == "CHU_TRO") {
-                                    val address = user.chu_tro?.dia_chi ?: ""
+                                    val address = profile?.dia_chi ?: ""
                                     ProfileDetailItem(icon = Icons.Default.LocationOn, label = "Địa chỉ", value = address.ifEmpty { "Chưa cập nhật" })
                                 }
                                 
@@ -136,7 +195,7 @@ fun ProfileScreen(
                         Spacer(modifier = Modifier.weight(1f))
 
                         Button(
-                            onClick = {/*TODO Chỉnh sửa thông tin cá nhân*/ },
+                            onClick = { navController.navigate(Screen.EditProfile.route) },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
 

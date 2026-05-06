@@ -3,7 +3,7 @@ import { Op } from 'sequelize';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { TaiKhoan, ChuTro, NguoiThue } from '../models/quanHe.js';
+import { TaiKhoan, ChuTro, NguoiThue, HopDong } from '../models/quanHe.js';
 import { verifyToken } from '../middlewares/auth.js';
 import { guiEmailXacThuc, guiEmailQuenMatKhau } from '../services/emailService.js';
 
@@ -234,7 +234,11 @@ router.get('/me', verifyToken, async (req, res) => {
       attributes: { exclude: ['mat_khau'] },
       include: [
         { model: ChuTro, as: 'ChuTro' },
-        { model: NguoiThue, as: 'NguoiThue' }
+        { 
+          model: NguoiThue, 
+          as: 'NguoiThue',
+          include: [{ model: HopDong, as: 'DanhSachHopDong', where: { trang_thai: 1 }, required: false }]
+        }
       ]
     });
 

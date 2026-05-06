@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchStats, fetchMyRoom, fetchInvoices, fetchRentRequests } from '../api/api';
+import { fetchStats, fetchMyRoom, fetchMyInvoices, fetchMyRentRequests } from '../api/api';
 import { Stats, Room, Invoice, RentRequest, User } from '../types';
 
-function MetricCard({ title, value, label, icon = '📊' }: { title: string; value: string; label: string; icon?: string }) {
+function MetricCard({ title, value, label, icon = '' }: { title: string; value: string; label: string; icon?: string }) {
   return (
     <div className="metric-card card shadow-sm">
       <div className="icon">{icon}</div>
@@ -24,21 +24,21 @@ export default function DashboardPage({ user }: { user: User }) {
 
   useEffect(() => {
     if (!user) return;
-    
+
     setLoading(true);
     const isTenant = user.vai_tro === 'NGUOI_THUE';
-    
+
     if (isTenant) {
       Promise.all([
         fetchMyRoom().catch(() => null),
-        fetchInvoices().catch(() => []),
-        fetchRentRequests().catch(() => [])
+        fetchMyInvoices().catch(() => []),
+        fetchMyRentRequests().catch(() => [])
       ]).then(([room, invs, reqs]) => {
         setMyRoom(room);
         setInvoices(invs.filter(i => i.trang_thai === 0)); // Only unpaid
         setRequests(reqs);
       }).catch((err) => setError(err instanceof Error ? err.message : 'Không tải được dữ liệu'))
-      .finally(() => setLoading(false));
+        .finally(() => setLoading(false));
     } else {
       fetchStats()
         .then(setStats)
@@ -54,7 +54,7 @@ export default function DashboardPage({ user }: { user: User }) {
       <div className="tenant-dashboard">
         <div className="section-title">
           <div>
-            <h2>Chào mừng bạn trở lại, {user.profile?.ho_ten || user.ten_dang_nhap}! 👋</h2>
+            <h2>Chào mừng bạn trở lại, {user.profile?.ho_ten || user.ten_dang_nhap}!</h2>
             <p className="text-muted">Dưới đây là tóm tắt thông tin thuê phòng của bạn.</p>
           </div>
         </div>
@@ -80,18 +80,18 @@ export default function DashboardPage({ user }: { user: User }) {
             )}
           </div>
 
-          <MetricCard 
-            title="Hóa đơn chờ" 
-            value={invoices.length.toString()} 
-            label="Hóa đơn chưa thanh toán" 
-            icon="💰" 
+          <MetricCard
+            title="Hóa đơn chờ"
+            value={invoices.length.toString()}
+            label="Hóa đơn chưa thanh toán"
+            icon=""
           />
-          
-          <MetricCard 
-            title="Yêu cầu" 
-            value={requests.length.toString()} 
-            label="Yêu cầu thuê đã gửi" 
-            icon="📩" 
+
+          <MetricCard
+            title="Yêu cầu"
+            value={requests.length.toString()}
+            label="Yêu cầu thuê đã gửi"
+            icon=""
           />
         </div>
 
@@ -99,28 +99,24 @@ export default function DashboardPage({ user }: { user: User }) {
         <div className="quick-grid">
           <Link to="/tenant/profile" className="quick-card-link">
             <div className="quick-card">
-              <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>👤</div>
               <h4>Hồ sơ cá nhân</h4>
               <p className="text-muted" style={{ fontSize: '0.8rem' }}>Cập nhật thông tin định danh</p>
             </div>
           </Link>
           <Link to="/tenant/invoices" className="quick-card-link">
             <div className="quick-card">
-              <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>💳</div>
               <h4>Thanh toán</h4>
               <p className="text-muted" style={{ fontSize: '0.8rem' }}>Xem và trả hóa đơn hàng tháng</p>
             </div>
           </Link>
           <Link to="/tenant/rent-requests" className="quick-card-link">
             <div className="quick-card">
-              <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>📑</div>
               <h4>Trạng thái thuê</h4>
               <p className="text-muted" style={{ fontSize: '0.8rem' }}>Theo dõi các yêu cầu đã gửi</p>
             </div>
           </Link>
           <Link to="/tenant/contracts" className="quick-card-link">
             <div className="quick-card">
-              <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>📜</div>
               <h4>Hợp đồng</h4>
               <p className="text-muted" style={{ fontSize: '0.8rem' }}>Xem nội dung hợp đồng thuê</p>
             </div>
@@ -144,40 +140,36 @@ export default function DashboardPage({ user }: { user: User }) {
       ) : stats ? (
         <>
           <div className="grid-3 landlord-stats" style={{ marginBottom: 24 }}>
-            <MetricCard title="🏠 Tổng phòng" value={stats.phong.tong.toString()} label="Phòng đã tạo" />
-            <MetricCard title="📦 Phòng thuê" value={stats.phong.choThue.toString()} label="Đang cho thuê" />
-            <MetricCard title="🆓 Phòng trống" value={stats.phong.trong.toString()} label="Sẵn sàng" />
+            <MetricCard title="Tổng phòng" value={stats.phong.tong.toString()} label="Phòng đã tạo" icon="" />
+            <MetricCard title="Phòng thuê" value={stats.phong.choThue.toString()} label="Đang cho thuê" icon="" />
+            <MetricCard title="Phòng trống" value={stats.phong.trong.toString()} label="Sẵn sàng" icon="" />
           </div>
           <div className="grid-3 landlord-stats" style={{ marginBottom: 24 }}>
-            <MetricCard title="Hoá đơn chưa thu" value={stats.hoaDon.chuaThanhtoan.toString()} label="Chưa thanh toán" icon="⏳" />
-            <MetricCard title="Hoá đơn đã thu" value={stats.hoaDon.daThanhtoan.toString()} label="Đã thanh toán" icon="✅" />
-            <MetricCard title="Doanh thu" value={`${stats.doanhThu.toLocaleString()} VNĐ`} label="Tổng doanh thu" icon="📈" />
+            <MetricCard title="Hoá đơn chưa thu" value={stats.hoaDon.chuaThanhtoan.toString()} label="Chưa thanh toán" icon="" />
+            <MetricCard title="Hoá đơn đã thu" value={stats.hoaDon.daThanhtoan.toString()} label="Đã thanh toán" icon="" />
+            <MetricCard title="Doanh thu" value={`${stats.doanhThu.toLocaleString()} VNĐ`} label="Tổng doanh thu" icon="" />
           </div>
           <div className="quick-grid">
             <Link to="/rooms" className="quick-card-link">
               <div className="quick-card">
-                <div className="icon">🏠</div>
                 <h3>Quản lý phòng</h3>
                 <p className="text-muted">Xem, thêm, sửa phòng trọ</p>
               </div>
             </Link>
             <Link to="/tenants" className="quick-card-link">
               <div className="quick-card">
-                <div className="icon">👥</div>
                 <h3>Người thuê</h3>
                 <p className="text-muted">Quản lý danh sách khách thuê</p>
               </div>
             </Link>
             <Link to="/contracts" className="quick-card-link">
               <div className="quick-card">
-                <div className="icon">📝</div>
                 <h3>Hợp đồng</h3>
                 <p className="text-muted">Theo dõi hợp đồng hoạt động</p>
               </div>
             </Link>
             <Link to="/invoices" className="quick-card-link">
               <div className="quick-card">
-                <div className="icon">💵</div>
                 <h3>Hóa đơn</h3>
                 <p className="text-muted">Tạo & theo dõi thanh toán</p>
               </div>

@@ -24,6 +24,7 @@ import ProfilePage from './pages/ProfilePage';
 import RentRequestListPage from './pages/RentRequestListPage';
 import MyRoomPage from './pages/MyRoomPage';
 import ReportPage from './pages/ReportPage';
+import VerificationManagementPage from './pages/VerificationManagementPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './components/MainLayout';
 import { User } from './types';
@@ -107,10 +108,13 @@ function App() {
       ...(user.vai_tro === 'CHU_TRO' || user.vai_tro === 'ADMIN'
         ? [
             { path: '/tenants', label: 'Người thuê' },
-            { path: '/reports', label: '📊 Báo cáo' }
+            { path: '/reports', label: 'Báo cáo' }
           ]
         : []),
-      ...(user.vai_tro === 'ADMIN' ? [{ path: '/users', label: 'Tài khoản' }] : []),
+      ...(user.vai_tro === 'ADMIN' ? [
+        { path: '/users', label: 'Tài khoản' },
+        { path: '/admin/verifications', label: 'Duyệt chủ trọ' }
+      ] : []),
       { path: '/profile', label: 'Hồ sơ' }
     ];
   }, [user]);
@@ -161,6 +165,7 @@ function App() {
             {/* Admin Exclusive */}
             <Route element={<ProtectedRoute user={user} loading={loadingUser} allowedRoles={['ADMIN']} />}>
               <Route path="/users" element={<UserManagementPage />} />
+              <Route path="/admin/verifications" element={<VerificationManagementPage />} />
             </Route>
           </Route>
 

@@ -2,6 +2,7 @@ import express from 'express';
 import { YeuCauThue, Phong, NguoiThue, HopDong, HoaDon } from '../models/quanHe.js';
 import {
   verifyToken,
+  loadChuTro,
   requireChuTroOrAdmin,
   requireAuthenticated
 } from '../middlewares/auth.js';
@@ -191,7 +192,7 @@ router.delete('/:id_yeu_cau/huy', verifyToken, requireAuthenticated, async (req,
 // ==================== CHỦ TRỌ ====================
 
 // GET /api/yeuCauThue - Chủ trọ xem danh sách yêu cầu
-router.get('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
+router.get('/', verifyToken, requireChuTroOrAdmin, loadChuTro, async (req, res) => {
   try {
     let phongIds = null;
 
@@ -228,7 +229,7 @@ router.get('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
 });
 
 // PUT /api/yeuCauThue/:id_yeu_cau/duyet - Chủ trọ DUYỆT yêu cầu → Tạo hợp đồng + phòng → Đã thuê
-router.put('/:id_yeu_cau/duyet', verifyToken, requireChuTroOrAdmin, async (req, res) => {
+router.put('/:id_yeu_cau/duyet', verifyToken, requireChuTroOrAdmin, loadChuTro, async (req, res) => {
   try {
     const yeuCau = await YeuCauThue.findByPk(req.params.id_yeu_cau, {
       include: [
@@ -295,7 +296,7 @@ router.put('/:id_yeu_cau/duyet', verifyToken, requireChuTroOrAdmin, async (req, 
 });
 
 // ✅ PUT /api/yeuCauThue/:id_yeu_cau/tu-choi - Chủ trọ TỪ CHỐI → Phòng về trống
-router.put('/:id_yeu_cau/tu-choi', verifyToken, requireChuTroOrAdmin, async (req, res) => {
+router.put('/:id_yeu_cau/tu-choi', verifyToken, requireChuTroOrAdmin, loadChuTro, async (req, res) => {
   try {
     const yeuCau = await YeuCauThue.findByPk(req.params.id_yeu_cau, {
       include: [{ model: Phong, as: 'Phong' }]

@@ -69,6 +69,11 @@ const ChuTro = sequelize.define('ChuTro', {
   ma_ngan_hang: {
     type: DataTypes.STRING(20),
     comment: 'Mã BIN ngân hàng dùng cho VietQR (VD: 970436 là Vietcombank)'
+  },
+  verification_status: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: '0: Chưa gửi, 1: Đang chờ duyệt, 2: Đã xác thực, 3: Bị từ chối'
   }
 }, {
   tableName: 'chu_tro',

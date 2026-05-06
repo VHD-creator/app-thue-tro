@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { changePassword, fetchProfile, updateProfile, resendVerificationEmail, fetchBankInfo, fetchBanks, updateBankInfo, fetchContracts } from '../api/api';
+import { changePassword, fetchProfile, updateProfile, resendVerificationEmail, fetchBankInfo, fetchBanks, updateBankInfo, fetchContracts, requestVerification } from '../api/api';
 import { ProfileUpdatePayload, User, BankInfo, Contract } from '../types';
 
 type Props = {
@@ -182,25 +182,44 @@ export default function ProfilePage({ user, onUpdateUser }: Props) {
                 <div style={{ 
                   padding: '16px',
                   marginBottom: '20px',
-                  backgroundColor: profile.email_verified ? '#ecfdf5' : '#fff7ed',
-                  border: `1px solid ${profile.email_verified ? '#6ee7b7' : '#fed7aa'}`,
+                  backgroundColor: profile.verification_status === 2 ? '#ecfdf5' : 
+                                 profile.verification_status === 1 ? '#eff6ff' : '#fff7ed',
+                  border: `1px solid ${profile.verification_status === 2 ? '#6ee7b7' : 
+                                     profile.verification_status === 1 ? '#93c5fd' : '#fed7aa'}`,
                   borderRadius: '8px',
                   fontSize: '0.9rem'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span>{profile.email_verified ? '✅' : '⚠️'}</span>
-                    <strong>{profile.email_verified ? 'Đã xác thực email' : 'Chưa xác thực email'}</strong>
+                    <strong>
+                      {profile.verification_status === 2 ? 'Tài khoản đã xác thực' : 
+                       profile.verification_status === 1 ? 'Đang chờ Admin duyệt' : 
+                       profile.verification_status === 3 ? 'Yêu cầu xác thực bị từ chối' : 'Tài khoản chưa xác thực'}
+                    </strong>
                   </div>
-                  {!profile.email_verified && (
+                  
+                  {(profile.verification_status === 0 || profile.verification_status === 3) && (
                     <button 
                       className="button button-primary"
                       type="button"
-                      onClick={handleResendVerification}
-                      disabled={resendLoading}
-                      style={{ fontSize: '0.75rem', padding: '4px 8px' }}
+                      onClick={async () => {
+                        try {
+                          await requestVerification();
+                          setSuccess('Gửi yêu cầu xác thực thành công!');
+                          setProfile({...profile, verification_status: 1});
+                        } catch (err) {
+                          setError(err instanceof Error ? err.message : 'Gửi yêu cầu thất bại');
+                        }
+                      }}
+                      style={{ fontSize: '0.75rem', padding: '6px 12px' }}
                     >
-                      {resendLoading ? 'Đang gửi...' : 'Gửi lại mã xác thực'}
+                      {profile.verification_status === 3 ? 'Gửi lại yêu cầu xác thực' : 'Gửi yêu cầu xác thực tài khoản'}
                     </button>
+                  )}
+
+                  {profile.verification_status === 1 && (
+                    <p className="text-muted" style={{ margin: 0, fontSize: '0.8rem' }}>
+                      Yêu cầu của bạn đang được xem xét. Chúng tôi sẽ thông báo cho bạn sớm nhất.
+                    </p>
                   )}
                 </div>
               )}
@@ -210,11 +229,13 @@ export default function ProfilePage({ user, onUpdateUser }: Props) {
                   <label htmlFor="hoTen">Họ và tên</label>
                   <input id="hoTen" value={hoTen} onChange={(event) => setHoTen(event.target.value)} required />
                 </div>
-                <div>
-                  <label>Số CCCD / Định danh</label>
-                  <input value={profile.cccd || ''} readOnly disabled style={{ background: '#f3f4f6', cursor: 'not-allowed' }} />
-                  <small className="text-muted">Liên hệ chủ trọ nếu cần thay đổi CCCD.</small>
-                </div>
+                {user.vai_tro === 'NGUOI_THUE' && (
+                  <div>
+                    <label>Số CCCD / Định danh</label>
+                    <input value={profile.cccd || ''} readOnly disabled style={{ background: '#f3f4f6', cursor: 'not-allowed' }} />
+                    <small className="text-muted">Liên hệ chủ trọ nếu cần thay đổi CCCD.</small>
+                  </div>
+                )}
                 <div>
                   <label htmlFor="email">Email</label>
                   <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />

@@ -1,17 +1,18 @@
 import express from 'express';
 import { Op } from 'sequelize';
-import { ThanhToan, HoaDon, Phong, HopDong, ChuTro } from '../models/quanHe.js';
-import {
-  verifyToken,
+import { ThanhToan, HoaDon, Phong, HopDong, ChuTro, NguoiThue } from '../models/quanHe.js';
+import { 
+  verifyToken, 
+  loadChuTro,
   requireChuTroOrAdmin,
-  requireAuthenticated
+  requireAuthenticated 
 } from '../middlewares/auth.js';
 import { validateAmount, validatePaymentMethod, validateDate } from '../utils/validators.js';
 
 const router = express.Router();
 
 // GET /api/thanhToan/bao-cao-doanh-thu - Thống kê doanh thu theo tháng (cho chủ trọ)
-router.get('/bao-cao-doanh-thu', verifyToken, requireChuTroOrAdmin, async (req, res) => {
+router.get('/bao-cao-doanh-thu', verifyToken, requireChuTroOrAdmin, loadChuTro, async (req, res) => {
   console.log('📊 Thống kê doanh thu requested by user:', req.userId);
   try {
     const wherePhong = {};

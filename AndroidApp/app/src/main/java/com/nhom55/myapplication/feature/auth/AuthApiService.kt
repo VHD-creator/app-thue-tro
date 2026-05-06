@@ -3,6 +3,7 @@ package com.nhom55.myapplication.feature.auth
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 
 data class RegisterRequest(
@@ -71,7 +72,9 @@ data class ProfileData(
     val cccd: String? = null,
     val dia_chi: String? = null,
     val email_verified: Boolean = false,
-    val phone_verified: Boolean = false
+    val phone_verified: Boolean = false,
+    val verification_status: Int = 0, // 0: Chưa gửi, 1: Chờ, 2: Xong, 3: Từ chối
+    val DanhSachHopDong: List<Any>? = null
 )
 
 interface AuthApiService {
@@ -92,4 +95,21 @@ interface AuthApiService {
 
     @POST("api/auth/resend-verification")
     suspend fun resendVerification(@Body request: VerifyEmailRequest): ResendVerificationResponse
+
+    @POST("api/chuTro/profile/verify")
+    suspend fun requestVerification(): ChangePasswordResponse // Tận dụng chung model response message
+
+    @PUT("api/chuTro/profile")
+    suspend fun updateChuTroProfile(@Body request: UpdateProfileRequest): ChangePasswordResponse
+
+    @PUT("api/nguoiThue/profile")
+    suspend fun updateNguoiThueProfile(@Body request: UpdateProfileRequest): ChangePasswordResponse
 }
+
+data class UpdateProfileRequest(
+    val ho_ten: String? = null,
+    val so_dien_thoai: String? = null,
+    val email: String? = null,
+    val dia_chi: String? = null,
+    val cccd: String? = null
+)

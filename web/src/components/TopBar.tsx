@@ -34,8 +34,8 @@ export default function TopBar({ user }: Props) {
             </span>
           ) : null}
         </div>
-        <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: 'var(--border)', display: 'flex', alignItems: 'center', justifySelf: 'center', fontSize: '1.2rem', justifyContent: 'center' }}>
-          👤
+        <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: 'var(--border)', display: 'flex', alignItems: 'center', justifySelf: 'center', fontSize: '1rem', fontWeight: 600, color: 'var(--primary)', justifyContent: 'center' }}>
+          {(user?.profile?.ho_ten || user?.ten_dang_nhap || 'U')[0].toUpperCase()}
         </div>
       </div>
     </header>

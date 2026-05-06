@@ -62,6 +62,7 @@ export type Room = {
   mo_ta?: string;
   Phong?: { id_phong: number; ten_phong: string; gia_phong?: number };
   ChuTro?: { ho_ten?: string; dia_chi?: string; so_dien_thoai?: string; email?: string };
+  DanhSachHinhAnh?: RoomImage[];
 };
 
 export type RoomImage = {

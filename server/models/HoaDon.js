@@ -64,10 +64,7 @@ const HoaDon = sequelize.define('HoaDon', {
   ngay_tao: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
-  },
-  ghi_chu: {
-  type: DataTypes.STRING(255)
-}
+  }
 }, {
   tableName: 'hoa_don',
   timestamps: false
