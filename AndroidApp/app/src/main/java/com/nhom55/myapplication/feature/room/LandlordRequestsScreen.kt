@@ -42,19 +42,17 @@ fun LandlordRequestsScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Quản lý yêu cầu thuê", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
+    Column(modifier = Modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text("Quản lý yêu cầu thuê", fontWeight = FontWeight.Bold) },
+            navigationIcon = {
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                 }
-            )
-        }
-    ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            }
+        )
+        
+        Box(modifier = Modifier.fillMaxSize()) {
             when (requestsState) {
                 is YeuCauThueState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 is YeuCauThueState.Error -> {

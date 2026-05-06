@@ -18,11 +18,20 @@ export function generateContractPdf(hopDong, chuTro, nguoiThue, phong, res) {
       doc.pipe(res);
 
       // Load font tiếng Việt
-      const fontPath = path.join(__dirname, '..', 'utils', 'fonts', 'Roboto-Regular.ttf');
+      let fontPath = path.join(__dirname, '..', 'utils', 'fonts', 'times.ttf');
+      if (!fs.existsSync(fontPath)) {
+        // Thử lấy font hệ thống Windows nếu không có trong folder utils
+        fontPath = 'C:\\Windows\\Fonts\\times.ttf';
+      }
+
       if (fs.existsSync(fontPath)) {
         doc.font(fontPath);
       } else {
-        console.warn('Không tìm thấy font tiếng Việt, có thể lỗi hiển thị.');
+        const fallbackFont = path.join(__dirname, '..', 'utils', 'fonts', 'Roboto-Regular.ttf');
+        if (fs.existsSync(fallbackFont)) {
+          doc.font(fallbackFont);
+        }
+        console.warn('Không tìm thấy font Times New Roman, sử dụng font mặc định.');
       }
 
       // Format số tiền
@@ -39,9 +48,11 @@ export function generateContractPdf(hopDong, chuTro, nguoiThue, phong, res) {
       // Header
       doc.fontSize(14).text('CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', { align: 'center' });
       doc.fontSize(13).text('Độc lập - Tự do - Hạnh phúc', { align: 'center' });
-      doc.moveDown(2);
+      doc.moveDown(1);
+      doc.fontSize(12).text('-----------------------', { align: 'center' });
+      doc.moveDown(1);
       
-      doc.fontSize(16).text('HỢP ĐỒNG CHO THUÊ PHÒNG TRỌ', { align: 'center' });
+      doc.fontSize(16).font(fontPath).text('HỢP ĐỒNG CHO THUÊ PHÒNG TRỌ', { align: 'center' });
       doc.moveDown(2);
 
       // Hôm nay
@@ -95,13 +106,18 @@ export function generateContractPdf(hopDong, chuTro, nguoiThue, phong, res) {
       doc.text('Hai bên cam kết thực hiện đúng các điều khoản đã ghi trong hợp đồng. Nếu có tranh chấp sẽ thương lượng giải quyết trên tinh thần hợp tác.');
       doc.moveDown(2);
 
-      // Ký tên
-      const currentY = doc.y;
-      doc.text('ĐẠI DIỆN BÊN A', 100, currentY, { align: 'left' });
-      doc.text('(Ký và ghi rõ họ tên)', 100, currentY + 15, { align: 'left' });
+      // Kiểm tra khoảng trống để kí tên
+      if (doc.y > 700) {
+        doc.addPage();
+      }
 
-      doc.text('ĐẠI DIỆN BÊN B', 0, currentY, { align: 'right' });
-      doc.text('(Ký và ghi rõ họ tên)', 0, currentY + 15, { align: 'right' });
+      // Ký tên
+      const signatureY = doc.y;
+      doc.fontSize(12).text('ĐẠI DIỆN BÊN A', 50, signatureY, { width: 250, align: 'center' });
+      doc.text('(Ký và ghi rõ họ tên)', 50, signatureY + 15, { width: 250, align: 'center' });
+
+      doc.text('ĐẠI DIỆN BÊN B', 300, signatureY, { width: 250, align: 'center' });
+      doc.text('(Ký và ghi rõ họ tên)', 300, signatureY + 15, { width: 250, align: 'center' });
 
       // Kết thúc file
       doc.end();
@@ -118,4 +134,127 @@ export function generateContractPdf(hopDong, chuTro, nguoiThue, phong, res) {
       reject(error);
     }
   });
+}
+
+export function generateInvoicePdf(invoiceData, res) {
+  try {
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+
+    doc.pipe(res);
+
+    // Load font tiếng Việt
+    let fontPath = path.join(__dirname, '..', 'utils', 'fonts', 'times.ttf');
+    if (!fs.existsSync(fontPath)) {
+      fontPath = 'C:\\Windows\\Fonts\\times.ttf';
+    }
+
+    if (fs.existsSync(fontPath)) {
+      doc.font(fontPath);
+    } else {
+      const fallbackFont = path.join(__dirname, '..', 'utils', 'fonts', 'Roboto-Regular.ttf');
+      if (fs.existsSync(fallbackFont)) {
+        doc.font(fallbackFont);
+      }
+    }
+
+    const formatCurrency = (amount) => {
+      return new Intl.NumberFormat('vi-VN').format(Number(amount) || 0) + ' VNĐ';
+    };
+
+    const formatDate = (dateString) => {
+      if (!dateString) return '';
+      const d = new Date(dateString);
+      return isNaN(d.getTime()) ? '' : `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+    };
+
+    // Header
+    doc.fontSize(20).text('HÓA ĐƠN TIỀN TRỌ', { align: 'center' });
+    doc.fontSize(12).text(`Tháng ${invoiceData.thang_nam || '--/----'}`, { align: 'center' });
+    doc.moveDown(1.5);
+
+    // Thông tin chung
+    doc.fontSize(12).text(`Phòng: ${invoiceData.ten_phong || 'N/A'}`);
+    doc.text(`Ngày lập: ${formatDate(invoiceData.ngay_tao || new Date())}`);
+    doc.moveDown();
+
+    doc.text('--------------------------------------------------');
+    doc.moveDown();
+
+    // Chi tiết dịch vụ (Dạng bảng)
+    doc.fontSize(13).text('CHI TIẾT THANH TOÁN:', { underline: true });
+    doc.moveDown(1);
+
+    const tableTop = doc.y;
+    const itemX = 50;
+    const descX = 100;
+    const detailX = 250;
+    const amountX = 400;
+    const rowHeight = 30;
+
+    // Helper vẽ dòng kẻ ngang
+    const drawLine = (y) => {
+      doc.moveTo(itemX, y).lineTo(550, y).stroke();
+    };
+
+    // Header bảng
+    doc.fontSize(11).font(fontPath); // Đảm bảo dùng font tiếng Việt
+    doc.text('STT', itemX + 5, tableTop + 10);
+    doc.text('Nội dung', descX + 5, tableTop + 10);
+    doc.text('Chi tiết', detailX + 5, tableTop + 10);
+    doc.text('Thành tiền', amountX + 5, tableTop + 10, { width: 145, align: 'right' });
+    
+    let currentY = tableTop + rowHeight;
+    drawLine(tableTop);
+    drawLine(currentY);
+
+    let stt = 1;
+
+    // Dòng 1: Tiền phòng
+    doc.text(stt++, itemX + 10, currentY + 10);
+    doc.text('Tiền phòng', descX + 5, currentY + 10);
+    doc.text('-', detailX + 10, currentY + 10);
+    doc.text(formatCurrency(invoiceData.tien_phong), amountX + 5, currentY + 10, { width: 145, align: 'right' });
+    currentY += rowHeight;
+    drawLine(currentY);
+
+    // Dòng 2: Tiền điện (nếu có)
+    if (Number(invoiceData.so_dien_moi) > 0) {
+      doc.text(stt++, itemX + 10, currentY + 10);
+      doc.text('Tiền điện', descX + 5, currentY + 10);
+      doc.fontSize(9).text(`${invoiceData.so_dien_cu} -> ${invoiceData.so_dien_moi} (${Number(invoiceData.so_dien_moi) - Number(invoiceData.so_dien_cu)} kWh)`, detailX + 5, currentY + 10);
+      doc.fontSize(11).text(formatCurrency(invoiceData.tien_dien), amountX + 5, currentY + 10, { width: 145, align: 'right' });
+      currentY += rowHeight;
+      drawLine(currentY);
+    }
+
+    // Dòng 3: Tiền nước (nếu có)
+    if (Number(invoiceData.so_nuoc_moi) > 0) {
+      doc.text(stt++, itemX + 10, currentY + 10);
+      doc.text('Tiền nước', descX + 5, currentY + 10);
+      doc.fontSize(9).text(`${invoiceData.so_nuoc_cu} -> ${invoiceData.so_nuoc_moi} (${Number(invoiceData.so_nuoc_moi) - Number(invoiceData.so_nuoc_cu)} m3)`, detailX + 5, currentY + 10);
+      doc.fontSize(11).text(formatCurrency(invoiceData.tien_nuoc), amountX + 5, currentY + 10, { width: 145, align: 'right' });
+      currentY += rowHeight;
+      drawLine(currentY);
+    }
+
+    // Tổng cộng
+    doc.moveDown(2);
+    const finalY = doc.y;
+    doc.fontSize(15).fillColor('#b91c1c').text('TỔNG CỘNG:', 50, finalY);
+    doc.text(formatCurrency(invoiceData.tong_tien), 50, finalY, { align: 'right', width: 500 });
+    doc.fillColor('#000000');
+    
+    doc.moveDown(1.5);
+    const status = invoiceData.trang_thai === 1 ? 'ĐÃ THANH TOÁN' : 'CHƯA THANH TOÁN';
+    doc.fontSize(12).fillColor(invoiceData.trang_thai === 1 ? '#059669' : '#d97706').text(`Trạng thái: ${status}`, { align: 'right', width: 500 });
+    doc.fillColor('#000000');
+    
+    doc.moveDown(3);
+    doc.fontSize(12).text('Cảm ơn quý khách!', { align: 'center', italic: true });
+
+    doc.end();
+  } catch (err) {
+    console.error('Lỗi tạo PDF hóa đơn:', err);
+    throw err;
+  }
 }

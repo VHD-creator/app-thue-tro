@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
-import { fetchMyYeuCauThue, fetchAllYeuCauThue, cancelYeuCauThue, approveYeuCauThue, rejectYeuCauThue, getCurrentUser } from '../api/api';
-import { YeuCauThue, User } from '../types';
+import { fetchMyRentRequests, fetchRentRequests, cancelRentRequest, approveRentRequest, rejectRentRequest, getCurrentUser } from '../api/api';
+import { RentRequest, User } from '../types';
 
 export default function RentalRequestListPage() {
-  const [requests, setRequests] = useState<YeuCauThue[]>([]);
+  const [requests, setRequests] = useState<RentRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [user, setUser] = useState<User | null>(null);
 
-  const [approveModal, setApproveModal] = useState<YeuCauThue | null>(null);
-  const [rejectModal, setRejectModal] = useState<YeuCauThue | null>(null);
+  const [approveModal, setApproveModal] = useState<RentRequest | null>(null);
+  const [rejectModal, setRejectModal] = useState<RentRequest | null>(null);
 
   const [ngayKetThuc, setNgayKetThuc] = useState('');
   const [tienCoc, setTienCoc] = useState('');
@@ -33,10 +33,10 @@ export default function RentalRequestListPage() {
     setError('');
     try {
       if (user?.vai_tro === 'NGUOI_THUE') {
-        const data = await fetchMyYeuCauThue();
+        const data = await fetchMyRentRequests();
         setRequests(data);
       } else {
-        const data = await fetchAllYeuCauThue();
+        const data = await fetchRentRequests();
         setRequests(data);
       }
     } catch (err) {
@@ -49,7 +49,7 @@ export default function RentalRequestListPage() {
   async function handleCancel(id: number) {
     if (!window.confirm('Bạn có chắc muốn hủy yêu cầu này?')) return;
     try {
-      await cancelYeuCauThue(id);
+      await cancelRentRequest(id);
       await loadRequests();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Lỗi hủy yêu cầu');
@@ -67,7 +67,7 @@ export default function RentalRequestListPage() {
     }
 
     try {
-      await approveYeuCauThue(approveModal.id_yeu_cau, {
+      await approveRentRequest(approveModal.id_yeu_cau, {
         ngay_ket_thuc: ngayKetThuc,
         tien_coc: coc
       });
@@ -83,7 +83,7 @@ export default function RentalRequestListPage() {
     e.preventDefault();
     if (!rejectModal) return;
     try {
-      await rejectYeuCauThue(rejectModal.id_yeu_cau, lyDoTuChoi || 'Không phù hợp');
+      await rejectRentRequest(rejectModal.id_yeu_cau, lyDoTuChoi || 'Không phù hợp');
       setRejectModal(null);
       await loadRequests();
       alert('Đã từ chối yêu cầu.');

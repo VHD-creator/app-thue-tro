@@ -93,6 +93,7 @@ fun EditProfileScreen(
                 }
                 is ProfileUiState.Success -> {
                     val user = state.user
+                    val profile = user.profile ?: user.chu_tro ?: user.nguoi_thue
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -134,7 +135,8 @@ fun EditProfileScreen(
                         }
                         
                         if (user.vai_tro == "NGUOI_THUE") {
-                            val hasActiveContract = profile?.DanhSachHopDong?.isNotEmpty() == true
+                            val userProfile = user.profile ?: user.nguoi_thue
+                            val hasActiveContract = userProfile?.DanhSachHopDong?.isNotEmpty() == true
                             Column {
                                 OutlinedTextField(
                                     value = cccd,

@@ -8,7 +8,7 @@ import {
   checkPhongOwnership 
 } from '../middlewares/auth.js';
 import { validateAmount, validateMonthYear, validateBillStatus } from '../utils/validators.js';
-import { generateInvoicePDF } from '../utils/pdfGenerator.js';
+import { generateInvoicePdf } from '../services/pdfService.js';
 
 const router = express.Router();
 
@@ -157,6 +157,10 @@ router.get('/:id_hoa_don/pdf', verifyToken, async (req, res) => {
     // Kiểm tra quyền truy cập
     if (req.userRole === 'NGUOI_THUE') {
       const nguoiThue = await NguoiThue.findOne({ where: { id_tai_khoan: req.userId } });
+      if (!nguoiThue) {
+        return res.status(403).json({ error: 'Không tìm thấy hồ sơ người thuê' });
+      }
+      
       const hopDong = await HopDong.findOne({ 
         where: { id_phong: hoaDon.id_phong, id_nguoi_thue: nguoiThue.id_nguoi_thue } 
       });
@@ -165,24 +169,30 @@ router.get('/:id_hoa_don/pdf', verifyToken, async (req, res) => {
       }
     } else if (req.userRole === 'CHU_TRO') {
       const chuTro = await ChuTro.findOne({ where: { id_tai_khoan: req.userId } });
-      if (hoaDon.Phong.id_chu_tro !== chuTro.id_chu_tro) {
+      if (!chuTro || hoaDon.Phong.id_chu_tro !== chuTro.id_chu_tro) {
         return res.status(403).json({ error: 'Bạn không có quyền xem hóa đơn này' });
       }
+    }
+
+    if (!hoaDon.Phong) {
+      return res.status(404).json({ error: 'Không tìm thấy thông tin phòng cho hóa đơn này' });
     }
 
     const fileName = `HoaDon_${hoaDon.thang_nam}_${hoaDon.Phong.ten_phong}.pdf`.replace(/\s+/g, '_');
     
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    // Mã hóa tên file để tránh lỗi với tiếng Việt có dấu trong header
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
 
     const invoiceData = {
       ...hoaDon.toJSON(),
       ten_phong: hoaDon.Phong.ten_phong
     };
 
-    generateInvoicePDF(invoiceData, res);
+    generateInvoicePdf(invoiceData, res);
 
   } catch (error) {
+    console.error('Lỗi xuất PDF hóa đơn:', error);
     res.status(500).json({ error: error.message });
   }
 });
