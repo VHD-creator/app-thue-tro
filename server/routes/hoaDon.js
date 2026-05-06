@@ -8,6 +8,7 @@ import {
   checkPhongOwnership 
 } from '../middlewares/auth.js';
 import { validateAmount, validateMonthYear, validateBillStatus } from '../utils/validators.js';
+import { generateInvoicePDF } from '../utils/pdfGenerator.js';
 
 const router = express.Router();
 
@@ -137,6 +138,50 @@ router.get('/:id_hoa_don', verifyToken, async (req, res) => {
     }
 
     res.json(hoaDon);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/hoaDon/:id_hoa_don/pdf - Xuất hóa đơn PDF
+router.get('/:id_hoa_don/pdf', verifyToken, async (req, res) => {
+  try {
+    const hoaDon = await HoaDon.findByPk(req.params.id_hoa_don, {
+      include: [{ model: Phong, as: 'Phong' }]
+    });
+
+    if (!hoaDon) {
+      return res.status(404).json({ error: 'Hóa đơn không tồn tại' });
+    }
+
+    // Kiểm tra quyền truy cập
+    if (req.userRole === 'NGUOI_THUE') {
+      const nguoiThue = await NguoiThue.findOne({ where: { id_tai_khoan: req.userId } });
+      const hopDong = await HopDong.findOne({ 
+        where: { id_phong: hoaDon.id_phong, id_nguoi_thue: nguoiThue.id_nguoi_thue } 
+      });
+      if (!hopDong) {
+        return res.status(403).json({ error: 'Bạn không có quyền xem hóa đơn này' });
+      }
+    } else if (req.userRole === 'CHU_TRO') {
+      const chuTro = await ChuTro.findOne({ where: { id_tai_khoan: req.userId } });
+      if (hoaDon.Phong.id_chu_tro !== chuTro.id_chu_tro) {
+        return res.status(403).json({ error: 'Bạn không có quyền xem hóa đơn này' });
+      }
+    }
+
+    const fileName = `HoaDon_${hoaDon.thang_nam}_${hoaDon.Phong.ten_phong}.pdf`.replace(/\s+/g, '_');
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+    const invoiceData = {
+      ...hoaDon.toJSON(),
+      ten_phong: hoaDon.Phong.ten_phong
+    };
+
+    generateInvoicePDF(invoiceData, res);
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -2,6 +2,7 @@ package com.nhom55.myapplication.feature.tenant
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Home
@@ -67,6 +68,20 @@ fun TenantDashboardScreen(navController: NavHostController) {
             description = "Xem lịch sử dùng điện nước và thanh toán",
             icon = Icons.Default.List,
             onClick = { navController.navigate(Screen.Invoices.route) }
+        )
+
+        DashboardCard(
+            title = "Yêu cầu thuê của tôi",
+            description = "Theo dõi các yêu cầu đăng ký thuê phòng",
+            icon = Icons.Default.Email,
+            onClick = { navController.navigate(Screen.MyRequests.route) }
+        )
+
+        DashboardCard(
+            title = "Trợ lý ảo AI",
+            description = "Hỏi đáp về phòng trọ và hỗ trợ tìm kiếm",
+            icon = Icons.Default.Email,
+            onClick = { navController.navigate(Screen.ChatBot.route) }
         )
     }
 }

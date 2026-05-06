@@ -144,6 +144,18 @@ fun ProfileScreen(
                             Text("Chỉnh sửa thông tin")
                         }
                         
+                        if (user.vai_tro == "CHU_TRO") {
+                            Button(
+                                onClick = { navController.navigate("bank_config") },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+                            ) {
+                                Icon(Icons.Default.AccountBalance, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Cấu hình ngân hàng VietQR")
+                            }
+                        }
+
                         Button(
                             onClick = { showPasswordDialog = true },
                             modifier = Modifier.fillMaxWidth(),

@@ -10,6 +10,52 @@ import { validateAmount, validatePaymentMethod, validateDate } from '../utils/va
 
 const router = express.Router();
 
+// GET /api/thanhToan/bao-cao-doanh-thu - Thống kê doanh thu theo tháng (cho chủ trọ)
+router.get('/bao-cao-doanh-thu', verifyToken, requireChuTroOrAdmin, async (req, res) => {
+  console.log('📊 Thống kê doanh thu requested by user:', req.userId);
+  try {
+    const wherePhong = {};
+    if (req.userRole === 'CHU_TRO') {
+      wherePhong.id_chu_tro = req.idChuTro;
+    }
+
+    const payments = await ThanhToan.findAll({
+      include: [{
+        model: HoaDon,
+        as: 'HoaDon',
+        required: true,
+        include: [{
+          model: Phong,
+          as: 'Phong',
+          where: wherePhong,
+          required: true
+        }]
+      }],
+      order: [['ngay_thanh_toan', 'ASC']]
+    });
+
+    const stats = {};
+    payments.forEach(p => {
+      if (!p.ngay_thanh_toan) return;
+      const date = new Date(p.ngay_thanh_toan);
+      if (isNaN(date.getTime())) return; // Bỏ qua nếu ngày không hợp lệ
+
+      const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
+      stats[monthYear] = (stats[monthYear] || 0) + parseFloat(p.so_tien || 0);
+    });
+
+    const result = Object.keys(stats).map(key => ({
+      label: key,
+      value: stats[key]
+    })).slice(-6);
+
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Thống kê error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Helper: Kiểm tra và kích hoạt hợp đồng/phòng nếu đã đóng cọc
 const checkAndActivateContract = async (id_hop_dong) => {
   if (!id_hop_dong) return;
@@ -36,7 +82,7 @@ const checkAndActivateContract = async (id_hop_dong) => {
 router.get('/', verifyToken, async (req, res) => {
   try {
     let whereHoaDon = {};
-    
+
     if (req.userRole === 'CHU_TRO') {
       const chuTro = await ChuTro.findOne({ where: { id_tai_khoan: req.userId } });
       if (!chuTro) return res.json([]);

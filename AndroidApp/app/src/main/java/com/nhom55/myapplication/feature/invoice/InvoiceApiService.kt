@@ -18,4 +18,8 @@ interface InvoiceApiService {
 
     @DELETE("api/hoaDon/{id}")
     suspend fun deleteInvoice(@Path("id") id: Int): Response<Map<String, Any>>
+
+    @GET("api/hoaDon/{id}/pdf")
+    @Streaming
+    suspend fun downloadInvoicePdf(@Path("id") id: Int): okhttp3.ResponseBody
 }

@@ -118,6 +118,12 @@ export async function fetchStats(): Promise<Stats> {
   });
 }
 
+export async function fetchRevenueReport(): Promise<Array<{ label: string; value: number }>> {
+  return fetchJson<Array<{ label: string; value: number }>>(`${BASE_URL}/thanhToan/bao-cao-doanh-thu`, {
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+  });
+}
+
 export async function fetchRooms(): Promise<Room[]> {
   return fetchJson<Room[]>(`${BASE_URL}/phong`, {
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }

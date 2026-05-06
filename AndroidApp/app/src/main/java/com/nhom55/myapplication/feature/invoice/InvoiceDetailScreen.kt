@@ -23,6 +23,12 @@ import com.nhom55.myapplication.feature.room.formatPrice
 import com.nhom55.myapplication.feature.tenant.DetailRow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import android.content.ContentValues
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import java.io.OutputStream
+import androidx.compose.material.icons.filled.PictureAsPdf
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -277,6 +283,27 @@ fun InvoiceDetailScreen(
                                 }
                             }
                         }
+
+                        // Xuất PDF (Mọi vai trò đều có thể xuất nếu đã có hóa đơn)
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.downloadPdf(
+                                    id = invoiceId,
+                                    onSuccess = { responseBody ->
+                                        savePdfToDownloads(context, responseBody, "HoaDon_${currentInvoice.roomName}_${currentInvoice.monthYear}.pdf")
+                                    },
+                                    onError = { msg ->
+                                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                    }
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isOperating
+                        ) {
+                            Icon(Icons.Default.PictureAsPdf, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Xuất hóa đơn PDF")
+                        }
                     }
                 } else {
                     Text(
@@ -287,5 +314,30 @@ fun InvoiceDetailScreen(
                 }
             }
         }
+    }
+}
+
+fun savePdfToDownloads(context: android.content.Context, body: okhttp3.ResponseBody, fileName: String) {
+    try {
+        val resolver = context.contentResolver
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+        }
+
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+        if (uri != null) {
+            resolver.openOutputStream(uri).use { outputStream ->
+                outputStream?.write(body.bytes())
+            }
+            Toast.makeText(context, "Đã lưu PDF vào thư mục Downloads", Toast.LENGTH_LONG).show()
+        } else {
+            Toast.makeText(context, "Không thể tạo file PDF", Toast.LENGTH_SHORT).show()
+        }
+    } catch (e: Exception) {
+        Toast.makeText(context, "Lỗi khi lưu file: ${e.message}", Toast.LENGTH_LONG).show()
     }
 }

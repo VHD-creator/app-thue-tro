@@ -8,11 +8,12 @@ const router = express.Router();
 // ✅ optionalAuth + loadChuTro - lấy thông tin vai trò người dùng
 router.post('/', optionalAuth, loadChuTro, async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, history } = req.body;
 
     if (!message?.trim()) {
       return res.status(400).json({ error: 'Vui lòng nhập tin nhắn' });
     }
+
 
     const userInfo = {
       role: req.userRole || 'GUEST',

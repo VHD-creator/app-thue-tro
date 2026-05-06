@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.nhom55.myapplication.core.session.SessionManager
+import com.nhom55.myapplication.navigation.Screen
 
 @Composable
 fun DashboardScreen(
@@ -254,6 +255,23 @@ fun DashboardScreen(
                     icon = Icons.Default.List,
                     label = "Hóa đơn",
                     onClick = { navController.navigate("invoices") }
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                QuickAccessCard(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Default.CheckCircle,
+                    label = "Duyệt yêu cầu",
+                    onClick = { navController.navigate("landlord_requests") }
+                )
+                QuickAccessCard(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Default.Email,
+                    label = "Trợ lý AI",
+                    onClick = { navController.navigate(Screen.ChatBot.route) }
                 )
             }
         }

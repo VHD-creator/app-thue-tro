@@ -121,6 +121,7 @@ QUY TẮC:
     return { reply };
 
   } catch (error) {
+    console.error('❌ Gemini Service Error:', error);
     throw new Error(`Gemini error: ${error.message}`);
   }
 };

@@ -13,6 +13,7 @@ import com.nhom55.myapplication.ui.theme.MyApplicationTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.nhom55.myapplication.core.session.SessionManager.init(this)
         setContent {
             MyApplicationTheme {
                 Surface(

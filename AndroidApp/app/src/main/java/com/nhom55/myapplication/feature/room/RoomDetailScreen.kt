@@ -53,11 +53,10 @@ fun RoomDetailScreen(
     navController: NavHostController,
     viewModel: RoomViewModel = viewModel(),
     invoiceViewModel: InvoiceViewModel = viewModel(),
-    contractViewModel: ContractViewModel = viewModel()
+    yeuCauThueViewModel: YeuCauThueViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val invoiceState by invoiceViewModel.uiState.collectAsState()
-    val createContractState by contractViewModel.createUiState.collectAsState()
     val currentUser by SessionManager.currentUser.collectAsState()
     val roomImagesMap by viewModel.roomImages.collectAsState()
     val context = LocalContext.current
@@ -69,16 +68,18 @@ fun RoomDetailScreen(
         }
     }
 
-    LaunchedEffect(createContractState) {
-        if (createContractState is CreateContractUiState.Success) {
-            Toast.makeText(context, "Đặt phòng thành công!", Toast.LENGTH_SHORT).show()
+    val yeuCauState by yeuCauThueViewModel.actionState.collectAsState()
+
+    LaunchedEffect(yeuCauState) {
+        if (yeuCauState is YeuCauThueState.Success) {
+            Toast.makeText(context, "Gửi yêu cầu thuê thành công! Vui lòng chờ chủ trọ duyệt.", Toast.LENGTH_LONG).show()
             showBookingDialog = false
-            contractViewModel.resetCreateState()
+            yeuCauThueViewModel.resetActionState()
             viewModel.loadRooms()
-        } else if (createContractState is CreateContractUiState.Error) {
-            val msg = (createContractState as CreateContractUiState.Error).message
+        } else if (yeuCauState is YeuCauThueState.Error) {
+            val msg = (yeuCauState as YeuCauThueState.Error).message
             Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-            contractViewModel.resetCreateState()
+            yeuCauThueViewModel.resetActionState()
         }
     }
     
@@ -132,20 +133,17 @@ fun RoomDetailScreen(
                         if (showBookingDialog) {
                             BookingDialog(
                                 roomPrice = room.price,
-                                isLoading = createContractState is CreateContractUiState.Loading,
+                                isLoading = yeuCauState is YeuCauThueState.Loading,
                                 onDismiss = { showBookingDialog = false },
                                 onConfirm = { startDate, endDate, deposit ->
-                                    currentUser?.id?.toIntOrNull()?.let { userId ->
-                                        contractViewModel.createContract(
-                                            roomId = room.id.toInt(),
-                                            tenantId = userId,
-                                            startDate = startDate,
-                                            endDate = endDate,
-                                            deposit = deposit
-                                        )
-                                    } ?: run {
-                                        Toast.makeText(context, "Lỗi xác thực người dùng", Toast.LENGTH_SHORT).show()
-                                    }
+                                    val request = CreateYeuCauThueRequest(
+                                        id_phong = room.id.toInt(),
+                                        ngay_bat_dau_mong_muon = startDate,
+                                        ngay_ket_thuc = endDate,
+                                        tien_coc = deposit,
+                                        ghi_chu = ""
+                                    )
+                                    yeuCauThueViewModel.createYeuCauThue(request)
                                 }
                             )
                         }

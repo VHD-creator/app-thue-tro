@@ -44,6 +44,10 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object Settings : Screen("settings", "Cài đặt", Icons.Default.Settings)
     object Profile : Screen("profile", "Hồ sơ cá nhân", Icons.Default.Person)
     object UserList : Screen("user_list", "Quản lý người dùng", Icons.Default.Person)
+    object BankConfig : Screen("bank_config", "Cấu hình ngân hàng", Icons.Default.AccountBalance)
+    object MyRequests : Screen("my_requests", "Yêu cầu của tôi", Icons.Default.MailOutline)
+    object LandlordRequests : Screen("landlord_requests", "Duyệt yêu cầu thuê", Icons.Default.CheckCircle)
+    object ChatBot : Screen("chatbot", "Trợ lý ảo AI", Icons.Default.Email)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -294,8 +298,7 @@ fun MainScreen() {
                     )
                 }
                 composable(Screen.Reports.route) {
-                    PlaceholderScreen("Báo cáo")
-                    // TODO Gđ 3: Implement ReportScreen
+                    com.nhom55.myapplication.feature.report.ReportScreen(navController = navController)
                 }
                 composable(Screen.Settings.route) {
                     PlaceholderScreen("Cài đặt")
@@ -305,6 +308,28 @@ fun MainScreen() {
                 }
                 composable(Screen.UserList.route) {
                     com.nhom55.myapplication.feature.admin.UserListScreen(navController = navController)
+                }
+                composable(
+                    route = "vietqr_payment/{invoiceId}",
+                    arguments = listOf(navArgument("invoiceId") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val invoiceId = backStackEntry.arguments?.getInt("invoiceId") ?: 0
+                    com.nhom55.myapplication.feature.payment.VietQRPaymentScreen(
+                        invoiceId = invoiceId,
+                        navController = navController
+                    )
+                }
+                composable(Screen.BankConfig.route) {
+                    com.nhom55.myapplication.feature.payment.BankConfigScreen(navController = navController)
+                }
+                composable(Screen.MyRequests.route) {
+                    com.nhom55.myapplication.feature.room.MyRequestsScreen(navController = navController)
+                }
+                composable(Screen.LandlordRequests.route) {
+                    com.nhom55.myapplication.feature.room.LandlordRequestsScreen(navController = navController)
+                }
+                composable(Screen.ChatBot.route) {
+                    com.nhom55.myapplication.feature.chatbot.ChatScreen(navController = navController)
                 }
             }
         }

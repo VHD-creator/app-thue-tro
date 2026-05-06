@@ -108,6 +108,23 @@ try {
     }
   }
 
+  console.log('📝 [3.5/4] Thêm thông tin ngân hàng vào chu_tro...');
+  try {
+    await connection.execute(`
+      ALTER TABLE \`chu_tro\` 
+      ADD COLUMN \`so_tai_khoan\` VARCHAR(20) NULL,
+      ADD COLUMN \`ten_ngan_hang\` VARCHAR(50) NULL,
+      ADD COLUMN \`ma_ngan_hang\` VARCHAR(20) NULL
+    `);
+    console.log('    ✅ Bank info columns: OK');
+  } catch (err) {
+    if (err.code === 'ER_DUP_FIELDNAME') {
+      console.log('    ⏭️  Cột ngân hàng đã tồn tại, bỏ qua');
+    } else {
+      throw err;
+    }
+  }
+
   // ===================== MIGRATION 2: HINH_ANH_PHONG =====================
   console.log('📝 [4/5] Thêm file_hash vào hinh_anh_phong...');
   try {
@@ -137,7 +154,37 @@ try {
     }
   }
 
-  // ===================== MIGRATION 3: TAI_KHOAN =====================
+  // ===================== MIGRATION 3: HOP_DONG =====================
+  console.log('📝 [7/7] Thêm ngay_tao vào hop_dong...');
+  try {
+    await connection.execute(`
+      ALTER TABLE \`hop_dong\` ADD COLUMN \`ngay_tao\` DATETIME DEFAULT CURRENT_TIMESTAMP AFTER \`trang_thai\`
+    `);
+    console.log('    ✅ ngay_tao: OK');
+  } catch (err) {
+    if (err.code === 'ER_DUP_FIELDNAME') {
+      console.log('    ⏭️  Cột ngay_tao đã tồn tại, bỏ qua');
+    } else {
+      throw err;
+    }
+  }
+
+  // ===================== MIGRATION 4: HOA_DON =====================
+  console.log('📝 [8/8] Thêm id_hop_dong vào hoa_don...');
+  try {
+    await connection.execute(`
+      ALTER TABLE \`hoa_don\` ADD COLUMN \`id_hop_dong\` INT NULL AFTER \`tong_tien\`
+    `);
+    console.log('    ✅ id_hop_dong: OK');
+  } catch (err) {
+    if (err.code === 'ER_DUP_FIELDNAME') {
+      console.log('    ⏭️  Cột id_hop_dong đã tồn tại, bỏ qua');
+    } else {
+      throw err;
+    }
+  }
+
+  // ===================== MIGRATION 5: TAI_KHOAN =====================
   console.log('📝 [6/6] Đảm bảo tai_khoan có cột trang_thai...');
   try {
     await connection.execute(`
@@ -158,8 +205,11 @@ try {
   console.log('📊 Các thay đổi:');
   console.log('   • chu_tro: +email_verified, +verification_token, +verification_token_expiry');
   console.log('   • chu_tro: +phone_verified, +phone_verification_code, +phone_verification_expiry');
+  console.log('   • chu_tro: +so_tai_khoan, +ten_ngan_hang, +ma_ngan_hang');
   console.log('   • hinh_anh_phong: +file_hash, +index');
   console.log('   • tai_khoan: +trang_thai (nếu chưa có)');
+  console.log('   • hop_dong: +ngay_tao');
+  console.log('   • hoa_don: +id_hop_dong');
   console.log('');
   console.log('🚀 Bạn có thể khởi động server ngay bây giờ!');
   console.log('');

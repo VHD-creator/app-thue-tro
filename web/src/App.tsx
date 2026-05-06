@@ -23,6 +23,7 @@ import UserManagementPage from './pages/UserManagementPage';
 import ProfilePage from './pages/ProfilePage';
 import RentRequestListPage from './pages/RentRequestListPage';
 import MyRoomPage from './pages/MyRoomPage';
+import ReportPage from './pages/ReportPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './components/MainLayout';
 import { User } from './types';
@@ -104,7 +105,10 @@ function App() {
       { path: '/invoices', label: 'Hóa đơn' },
       { path: '/rent-requests', label: 'Yêu cầu thuê' },
       ...(user.vai_tro === 'CHU_TRO' || user.vai_tro === 'ADMIN'
-        ? [{ path: '/tenants', label: 'Người thuê' }]
+        ? [
+            { path: '/tenants', label: 'Người thuê' },
+            { path: '/reports', label: '📊 Báo cáo' }
+          ]
         : []),
       ...(user.vai_tro === 'ADMIN' ? [{ path: '/users', label: 'Tài khoản' }] : []),
       { path: '/profile', label: 'Hồ sơ' }
@@ -152,6 +156,7 @@ function App() {
             <Route path="/tenants/:id/edit" element={<TenantFormPage user={user!} />} />
             <Route path="/tenants/:id" element={<TenantDetailPage user={user!} />} />
             <Route path="/rent-requests" element={<RentRequestListPage user={user!} />} />
+            <Route path="/reports" element={<ReportPage user={user!} />} />
 
             {/* Admin Exclusive */}
             <Route element={<ProtectedRoute user={user} loading={loadingUser} allowedRoles={['ADMIN']} />}>

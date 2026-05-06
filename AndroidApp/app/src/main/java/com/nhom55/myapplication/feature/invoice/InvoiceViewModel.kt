@@ -145,6 +145,20 @@ class InvoiceViewModel : ViewModel() {
         }
     }
 
+    fun downloadPdf(id: Int, onSuccess: (okhttp3.ResponseBody) -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            _isOperating.value = true
+            try {
+                val responseBody = RetrofitInstance.invoiceApi.downloadInvoicePdf(id)
+                onSuccess(responseBody)
+            } catch (e: Exception) {
+                onError(e.message ?: "Lỗi khi tải PDF")
+            } finally {
+                _isOperating.value = false
+            }
+        }
+    }
+
     fun resetCreateState() {
         _createUiState.value = CreateInvoiceUiState.Idle
     }

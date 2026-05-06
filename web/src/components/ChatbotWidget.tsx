@@ -9,6 +9,7 @@ export default function ChatbotWidget() {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState(initialMessages);
+  const [history, setHistory] = useState<any[]>([]); // Lưu lịch sử chat dạng [role, text]
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -19,10 +20,7 @@ export default function ChatbotWidget() {
     setError('');
 
     const trimmed = message.trim();
-    if (!trimmed) {
-      setError('Nhập tin nhắn để gửi nhé');
-      return;
-    }
+    if (!trimmed) return;
 
     const userMessage = { role: 'user', text: trimmed };
     setMessages((prev) => [...prev, userMessage]);
@@ -30,8 +28,26 @@ export default function ChatbotWidget() {
     setLoading(true);
 
     try {
-      const response = await sendChatbotMessage(trimmed);
-      setMessages((prev) => [...prev, { role: 'bot', text: response.reply }]);
+      // Gọi API với message và history
+      const res = await fetch('/api/chatbot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ message: trimmed, history })
+      });
+
+      const data = await res.json();
+      
+      if (data.error) throw new Error(data.error);
+
+      setMessages((prev) => [...prev, { role: 'bot', text: data.reply }]);
+      
+      // Cập nhật history mới từ server trả về
+      if (data.history) {
+        setHistory(data.history);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Có lỗi khi gửi tin nhắn');
       setMessages((prev) => [...prev, { role: 'bot', text: 'Xin lỗi, mình hiện không trả lời được. Vui lòng thử lại sau.' }]);

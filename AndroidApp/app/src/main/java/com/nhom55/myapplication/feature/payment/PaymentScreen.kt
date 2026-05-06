@@ -25,8 +25,8 @@ fun PaymentScreen(
     val submitState by viewModel.submitState.collectAsState()
     val context = LocalContext.current
     
-    var selectedMethod by remember { mutableStateOf("chuyển khoản") }
-    val paymentMethods = listOf("tiền mặt", "chuyển khoản", "thẻ tín dụng", "ví điện tử")
+    var selectedMethod by remember { mutableStateOf("tiền mặt") }
+    val paymentMethods = listOf("tiền mặt", "VietQR (Chuyển khoản nhanh)")
 
     LaunchedEffect(submitState) {
         when (submitState) {
@@ -52,7 +52,7 @@ fun PaymentScreen(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Custom header
+        // ... (Header code remains same)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -113,7 +113,11 @@ fun PaymentScreen(
 
             Button(
                 onClick = { 
-                    viewModel.submitPayment(invoiceId, totalAmount, selectedMethod) 
+                    if (selectedMethod == "VietQR (Chuyển khoản nhanh)") {
+                        navController.navigate("vietqr_payment/$invoiceId")
+                    } else {
+                        viewModel.submitPayment(invoiceId, totalAmount, selectedMethod)
+                    }
                 },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 enabled = submitState !is PaymentSubmitState.Loading
@@ -124,7 +128,7 @@ fun PaymentScreen(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Xác nhận thanh toán")
+                    Text(if (selectedMethod == "VietQR (Chuyển khoản nhanh)") "Tiếp tục với VietQR" else "Xác nhận thanh toán")
                 }
             }
         }
