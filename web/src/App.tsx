@@ -1,12 +1,14 @@
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import LoginPage from './pages/LoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import RegisterPage from './pages/RegisterPage';
 import VerificationPage from './pages/VerificationPage';
 import DashboardPage from './pages/DashboardPage';
 import RoomListPage from './pages/RoomListPage';
 import RoomFormPage from './pages/RoomFormPage';
 import RoomDetailPage from './pages/RoomDetailPage';
+import RentalRequestListPage from './pages/RentalRequestListPage';
 import ContractListPage from './pages/ContractListPage';
 import ContractFormPage from './pages/ContractFormPage';
 import ContractDetailPage from './pages/ContractDetailPage';
@@ -51,11 +53,7 @@ function App() {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (!loadingUser && !user) {
-      navigate('/login');
-    }
-  }, [loadingUser, user, navigate]);
+
 
   const auth = useMemo(
     () => ({
@@ -78,6 +76,7 @@ function App() {
       ? [
           { path: '/tenant/dashboard', label: 'Dashboard' },
           { path: '/tenant/rooms', label: 'Phòng trọ' },
+          { path: '/tenant/rental-requests', label: 'Yêu cầu thuê' },
           { path: '/tenant/contracts', label: 'Hợp đồng' },
           { path: '/tenant/invoices', label: 'Hóa đơn' },
           { path: '/tenant/profile', label: 'Hồ sơ' }
@@ -85,6 +84,7 @@ function App() {
       : [
           { path: '/dashboard', label: 'Dashboard' },
           { path: '/rooms', label: 'Phòng trọ' },
+          { path: '/rental-requests', label: 'Yêu cầu thuê' },
           { path: '/contracts', label: 'Hợp đồng' },
           { path: '/invoices', label: 'Hóa đơn' },
           ...(user.vai_tro === 'CHU_TRO' || user.vai_tro === 'ADMIN'
@@ -103,6 +103,7 @@ function App() {
         <div className="page-body">
           <Routes>
             <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <LoginPage onLogin={auth.login} />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <RegisterPage />} />
             <Route path="/verify-email/:token" element={<VerificationPage />} />
             <Route path="/dashboard" element={user && user.vai_tro !== 'NGUOI_THUE' ? <DashboardPage /> : <Navigate to={user ? '/tenant/dashboard' : '/login'} />} />
@@ -110,6 +111,8 @@ function App() {
             <Route path="/rooms/new" element={user && user.vai_tro !== 'NGUOI_THUE' ? <RoomFormPage user={user} /> : <Navigate to={user ? '/tenant/rooms' : '/login'} />} />
             <Route path="/rooms/:id/edit" element={user && user.vai_tro !== 'NGUOI_THUE' ? <RoomFormPage user={user} /> : <Navigate to={user ? '/tenant/rooms' : '/login'} />} />
             <Route path="/rooms/:id" element={user ? <RoomDetailPage /> : <Navigate to="/login" />} />
+
+            <Route path="/rental-requests" element={user && user.vai_tro !== 'NGUOI_THUE' ? <RentalRequestListPage /> : <Navigate to={user ? '/tenant/rental-requests' : '/login'} />} />
 
             <Route path="/contracts" element={user && user.vai_tro !== 'NGUOI_THUE' ? <ContractListPage /> : <Navigate to={user ? '/tenant/contracts' : '/login'} />} />
             <Route path="/contracts/new" element={user && user.vai_tro !== 'NGUOI_THUE' ? <ContractFormPage /> : <Navigate to={user ? '/tenant/contracts' : '/login'} />} />
@@ -131,6 +134,7 @@ function App() {
 
             <Route path="/tenant/dashboard" element={user && user.vai_tro === 'NGUOI_THUE' ? <DashboardPage /> : <Navigate to={user ? '/dashboard' : '/login'} />} />
             <Route path="/tenant/rooms" element={user && user.vai_tro === 'NGUOI_THUE' ? <RoomListPage /> : <Navigate to={user ? '/rooms' : '/login'} />} />
+            <Route path="/tenant/rental-requests" element={user && user.vai_tro === 'NGUOI_THUE' ? <RentalRequestListPage /> : <Navigate to={user ? '/rental-requests' : '/login'} />} />
             <Route path="/tenant/contracts" element={user && user.vai_tro === 'NGUOI_THUE' ? <ContractListPage /> : <Navigate to={user ? '/contracts' : '/login'} />} />
             <Route path="/tenant/invoices" element={user && user.vai_tro === 'NGUOI_THUE' ? <InvoiceListPage /> : <Navigate to={user ? '/invoices' : '/login'} />} />
             <Route path="/tenant/profile" element={user && user.vai_tro === 'NGUOI_THUE' ? <ProfilePage user={user} onUpdateUser={setUser} /> : <Navigate to={user ? '/profile' : '/login'} />} />

@@ -86,4 +86,36 @@ export const guiEmailXacThuc = async (email, hoTen, verifyUrl) => {
   }
 };
 
+export const guiEmailQuenMatKhau = async (email, hoTen, otpCode) => {
+  if (!email || !otpCode) return;
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: '[Khôi phục mật khẩu] Mã xác nhận của bạn',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+        <h3 style="color: #333;">Xin chào ${hoTen || 'người dùng'},</h3>
+        <p>Bạn đã yêu cầu khôi phục mật khẩu trên hệ thống Quản lý Phòng trọ.</p>
+        <p>Đây là mã xác nhận của bạn (Mã có hiệu lực trong 15 phút):</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <span style="font-size: 32px; font-weight: bold; color: #007bff; letter-spacing: 5px; padding: 10px 20px; border: 2px dashed #007bff; border-radius: 5px; background-color: #f0f7ff;">
+            ${otpCode}
+          </span>
+        </div>
+        <p style="color: #666; font-size: 14px;">Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này để bảo mật tài khoản.</p>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="color: #888; font-size: 12px; text-align: center;">Trân trọng,<br/>Đội ngũ Quản lý Phòng trọ</p>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`📧 Đã gửi email khôi phục mật khẩu tới ${email}`);
+  } catch (error) {
+    console.error('❌ Lỗi gửi email khôi phục mật khẩu:', error.message);
+  }
+};
+
 export default transporter;

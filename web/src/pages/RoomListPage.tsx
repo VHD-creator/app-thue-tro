@@ -1,98 +1,139 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { fetchRooms } from '../api/api';
-import { Room } from '../types';
+import { Room, RoomImage } from '../types';
 
 export default function RoomListPage() {
+  const { isLandlord, isTenant } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | '0' | '1' | '2'>('all');
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     setLoading(true);
     fetchRooms()
       .then(setRooms)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Không tải được phòng'))
+      .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
 
-  const filteredRooms = useMemo(
-    () =>
-      rooms.filter((room) => {
-        const query = search.toLowerCase();
-        const matchesSearch =
-          room.ten_phong.toLowerCase().includes(query) ||
-          (room.mo_ta || '').toLowerCase().includes(query);
-        const matchesStatus = statusFilter === 'all' || String(room.trang_thai) === statusFilter;
-        return matchesSearch && matchesStatus;
-      }),
-    [rooms, search, statusFilter]
-  );
+  const filteredRooms = useMemo(() => {
+    return rooms.filter(room => {
+      const matchesSearch = room.ten_phong.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = filterStatus === 'all' || room.trang_thai.toString() === filterStatus;
+      return matchesSearch && matchesStatus;
+    });
+  }, [rooms, searchTerm, filterStatus]);
 
-  const statusLabel = (status: number) => {
-    switch (status) {
-      case 0:
-        return 'Còn trống';
-      case 1:
-        return 'Đang thuê';
-      case 2:
-        return 'Đang chờ';
-      default:
-        return 'Không xác định';
-    }
-  };
+  if (loading) return <div className="panel">Đang tải danh sách phòng...</div>;
+  if (error) return <div className="panel error">Lỗi: {error}</div>;
 
   return (
     <div>
       <div className="section-title">
         <div>
-          <h2>Danh sách phòng</h2>
-          <p className="text-muted">Danh sách phòng và trạng thái tương tự màn hình Android.</p>
+          <h2>{isLandlord ? 'Quản lý phòng trọ' : 'Danh sách phòng trọ'}</h2>
+          <p className="text-muted">
+            {isLandlord ? 'Xem và quản lý tất cả phòng trọ của bạn.' : 'Tìm phòng trọ phù hợp.'}
+          </p>
         </div>
-        <Link className="button button-primary" to="/rooms/new">
-          Thêm phòng
-        </Link>
+        {isLandlord && (
+          <Link to="/rooms/new" className="button button-primary">
+            ➕ Thêm phòng mới
+          </Link>
+        )}
       </div>
-      <div className="list-controls">
-        <input
-          type="text"
-          className="search-input"
-          placeholder="Tìm theo tên hoặc mô tả..."
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as any)}>
-          <option value="all">Tất cả trạng thái</option>
-          <option value="0">Còn trống</option>
-          <option value="1">Đang thuê</option>
-          <option value="2">Đang chờ</option>
-        </select>
-      </div>
-      {loading ? (
-        <div className="panel">Đang tải phòng...</div>
-      ) : error ? (
-        <div className="panel">{error}</div>
-      ) : (
-        <div className="list-card">
-          {filteredRooms.map((room) => (
-            <Link key={room.id_phong} to={`/rooms/${room.id_phong}`} className="list-item list-item-link">
-              <div>
-                <h3>{room.ten_phong}</h3>
-                <small>{room.mo_ta || 'Phòng chưa có mô tả'}</small>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: 700 }}>{room.gia_phong.toLocaleString()} VNĐ</div>
-                <div className="status-chip" style={{ marginTop: 8 }}>
-                  {statusLabel(room.trang_thai)}
-                </div>
-              </div>
-            </Link>
-          ))}
-          {filteredRooms.length === 0 ? <div className="panel">Không có phòng phù hợp với tìm kiếm.</div> : null}
+
+      <div className="card">
+        <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+          <input
+            type="text"
+            placeholder="Tìm kiếm theo tên phòng..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ flex: 1, minWidth: 200 }}
+          />
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ minWidth: 140 }}>
+            <option value="all">Tất cả trạng thái</option>
+            <option value="0">Trống</option>
+            <option value="1">Đã cho thuê</option>
+          </select>
         </div>
-      )}
+
+        {filteredRooms.length === 0 ? (
+          <div className="panel text-muted">
+            {isLandlord ? 'Chưa có phòng nào. ' : 'Không tìm thấy phòng phù hợp. '}
+            {isLandlord && <Link to="/rooms/new">Tạo phòng đầu tiên</Link>}
+          </div>
+        ) : (
+          <div className="table-responsive">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Hình ảnh</th>
+                  <th>Tên phòng</th>
+                  <th>Giá</th>
+                  <th>Trạng thái</th>
+                  <th>Chủ trọ</th>
+                  <th>{isLandlord ? 'Thao tác' : 'Hành động'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRooms.map((room) => (
+                  <tr key={room.id_phong}>
+                    <td>
+                      <div style={{ width: 60, height: 40, background: '#f0f0f0', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        🏠
+                      </div>
+                    </td>
+                    <td>
+                      <Link to={`/rooms/${room.id_phong}`} style={{ fontWeight: 500 }}>
+                        {room.ten_phong}
+                      </Link>
+                      <p className="text-muted" style={{ fontSize: '0.875rem', margin: 0 }}>
+                        {room.mo_ta || 'Không có mô tả'}
+                      </p>
+                    </td>
+                    <td>
+                      <strong>{room.gia_phong.toLocaleString()} VNĐ</strong>
+                    </td>
+                    <td>
+                      <span className={`status-badge status-${room.trang_thai === 0 ? 'success' : 'warning'}`}>
+                        {room.trang_thai === 0 ? '🟢 Trống' : '🔴 Đã thuê'}
+                      </span>
+                    </td>
+                    <td>{room.ChuTro?.ho_ten || 'N/A'}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Link to={`/rooms/${room.id_phong}`} className="button button-small button-secondary">
+                          Xem
+                        </Link>
+                        {isLandlord ? (
+                          <>
+                            <Link to={`/rooms/${room.id_phong}/edit`} className="button button-small button-primary">
+                              Sửa
+                            </Link>
+                            <button className="button button-small button-danger" onClick={() => {/* delete logic */}}>
+                              Xóa
+                            </button>
+                          </>
+                        ) : (
+                          <Link to={`/rooms/${room.id_phong}`} className="button button-small button-success">
+                            Thuê ngay
+                          </Link>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { login } from '../api/api';
 import { LoginPayload, User } from '../types';
+
 
 type Props = {
   onLogin: (user: User) => void;
@@ -39,7 +40,7 @@ export default function LoginPage({ onLogin }: Props) {
     <div style={{ padding: '48px 24px' }}>
       <div className="login-card">
         <h1>Đăng nhập</h1>
-        <p className="text-muted">Đăng nhập để quản lý phòng trọ và kiểm tra hợp đồng / hóa đơn.</p>
+        
         <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '16px', marginTop: '24px' }}>
           <div>
             <label htmlFor="username">Tên đăng nhập / Email</label>
@@ -61,6 +62,11 @@ export default function LoginPage({ onLogin }: Props) {
               required
             />
           </div>
+          <div style={{ textAlign: 'right', marginTop: '-8px' }}>
+            <Link to="/forgot-password" style={{ fontSize: '14px', color: 'var(--primary-color)' }}>
+              Quên mật khẩu?
+            </Link>
+          </div>
           {error ? <div className="form-error">{error}</div> : null}
           <button type="submit" className="button button-primary" disabled={loading}>
             {loading ? 'Đang tải...' : 'Đăng nhập'}
@@ -70,9 +76,9 @@ export default function LoginPage({ onLogin }: Props) {
           </div>
           <div className="auth-switch">
             <span>Chưa có tài khoản?</span>
-            <button type="button" className="button button-secondary" onClick={() => navigate('/register')}>
+            <Link to="/register" className="button button-secondary">
               Đăng ký
-            </button>
+            </Link>
           </div>
         </form>
       </div>

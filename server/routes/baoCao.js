@@ -2,12 +2,12 @@ import express from 'express';
 import PDFDocument from 'pdfkit';
 import { Op } from 'sequelize';
 import { HoaDon, ThanhToan, Phong, HopDong, NguoiThue } from '../models/quanHe.js';
-import { verifyToken, requireChuTroOrAdmin } from '../middlewares/auth.js';
+import { verifyToken, requireChuTroOrAdmin, loadChuTro } from '../middlewares/auth.js';
 
 const router = express.Router();
 
 // ✅ GET /api/baoCao/thongKe - Thống kê nhanh theo chủ trọ
-router.get('/thongKe', verifyToken, requireChuTroOrAdmin, async (req, res) => {
+router.get('/thongKe', verifyToken, requireChuTroOrAdmin, loadChuTro, async (req, res) => {
   try {
     let phongFilter = {};
     let hoaDonFilter = {};
@@ -17,20 +17,28 @@ router.get('/thongKe', verifyToken, requireChuTroOrAdmin, async (req, res) => {
     }
 
     // Thống kê phòng
-    const tongPhong = await Phong.count({ where: phongFilter });
+    const tongPhong = await Phong.count({ where: { ...phongFilter, trang_thai: { [Op.ne]: -1 } } });
     const phongTrong = await Phong.count({ where: { ...phongFilter, trang_thai: 0 } });
     const phongDangThue = await Phong.count({ where: { ...phongFilter, trang_thai: 1 } });
     const phongChoDuyet = await Phong.count({ where: { ...phongFilter, trang_thai: 2 } });
 
-    // Lấy danh sách id phòng để filter hóa đơn
+    // Lấy danh sách id phòng đang hoạt động để filter hóa đơn
+    const activeRooms = await Phong.findAll({ 
+      where: { ...phongFilter, trang_thai: { [Op.ne]: -1 } }, 
+      attributes: ['id_phong'] 
+    });
+    const activeRoomIds = activeRooms.map(p => p.id_phong);
+    
     if (req.userRole === 'CHU_TRO' && req.idChuTro) {
-      const danhSachPhong = await Phong.findAll({ where: phongFilter, attributes: ['id_phong'] });
-      hoaDonFilter.id_phong = danhSachPhong.map(p => p.id_phong);
+      hoaDonFilter.id_phong = activeRoomIds;
     }
 
     // Thống kê hóa đơn
     const tongHoaDon = await HoaDon.count({ where: hoaDonFilter });
-    const hoaDonChuaThanhToan = await HoaDon.count({ where: { ...hoaDonFilter, trang_thai: 0 } });
+    // Chưa thanh toán = trang_thai 0 (chưa trả) + trang_thai 2 (còn nợ)
+    const hoaDonChuaThanhToan = await HoaDon.count({ 
+      where: { ...hoaDonFilter, trang_thai: { [Op.in]: [0, 2] } } 
+    });
     const hoaDonDaThanhToan = await HoaDon.count({ where: { ...hoaDonFilter, trang_thai: 1 } });
 
     // Doanh thu tháng này
@@ -81,23 +89,30 @@ router.get('/thongKe', verifyToken, requireChuTroOrAdmin, async (req, res) => {
 });
 
 // GET /api/baoCao/tongHop - Báo cáo tổng hợp
-router.get('/tongHop', verifyToken, requireChuTroOrAdmin, async (req, res) => {
+router.get('/tongHop', verifyToken, requireChuTroOrAdmin, loadChuTro, async (req, res) => {
   try {
     let phongFilter = {};
     let hoaDonFilter = {};
     
     if (req.userRole === 'CHU_TRO' && req.idChuTro) {
       phongFilter.id_chu_tro = req.idChuTro;
-      const danhSachPhong = await Phong.findAll({ where: phongFilter, attributes: ['id_phong'] });
-      hoaDonFilter.id_phong = danhSachPhong.map(p => p.id_phong);
+      // Chỉ lấy hóa đơn của các phòng đang hoạt động
+      const activeRooms = await Phong.findAll({ 
+        where: { ...phongFilter, trang_thai: { [Op.ne]: -1 } }, 
+        attributes: ['id_phong'] 
+      });
+      hoaDonFilter.id_phong = activeRooms.map(p => p.id_phong);
     }
     
-    const tongPhong = await Phong.count({ where: phongFilter });
+    const tongPhong = await Phong.count({ where: { ...phongFilter, trang_thai: { [Op.ne]: -1 } } });
     const phongTrong = await Phong.count({ where: { ...phongFilter, trang_thai: 0 } });
     const phongChoThue = await Phong.count({ where: { ...phongFilter, trang_thai: 1 } });
     const phongChoDuyet = await Phong.count({ where: { ...phongFilter, trang_thai: 2 } });
     const tongHoaDon = await HoaDon.count({ where: hoaDonFilter });
-    const hoaDonChuaThanhtoan = await HoaDon.count({ where: { ...hoaDonFilter, trang_thai: 0 } });
+    // Chưa thanh toán = trang_thai 0 + 2
+    const hoaDonChuaThanhtoan = await HoaDon.count({ 
+      where: { ...hoaDonFilter, trang_thai: { [Op.in]: [0, 2] } } 
+    });
     const hoaDonDaThanhtoan = await HoaDon.count({ where: { ...hoaDonFilter, trang_thai: 1 } });
 
     let thanhToanFilter = {};
@@ -125,7 +140,7 @@ router.get('/tongHop', verifyToken, requireChuTroOrAdmin, async (req, res) => {
 });
 
 // GET /api/baoCao/doanhThu - Báo cáo doanh thu theo khoảng thời gian
-router.get('/doanhThu', verifyToken, requireChuTroOrAdmin, async (req, res) => {
+router.get('/doanhThu', verifyToken, requireChuTroOrAdmin, loadChuTro, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
@@ -171,7 +186,7 @@ router.get('/doanhThu', verifyToken, requireChuTroOrAdmin, async (req, res) => {
 });
 
 // GET /api/baoCao/hoaDon - Xuất báo cáo hóa đơn PDF
-router.get('/hoaDon', verifyToken, requireChuTroOrAdmin, async (req, res) => {
+router.get('/hoaDon', verifyToken, requireChuTroOrAdmin, loadChuTro, async (req, res) => {
   try {
     let whereCondition = {};
     

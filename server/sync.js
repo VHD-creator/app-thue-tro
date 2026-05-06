@@ -15,7 +15,7 @@ import './models/quanHe.js';
 
 const syncDatabase = async () => {
   try {
-    await sequelize.sync({ force: false });
+    await sequelize.sync({ alter: true });
     console.log('✅ Database đã được đồng bộ thành công');
     process.exit(0);
   } catch (error) {

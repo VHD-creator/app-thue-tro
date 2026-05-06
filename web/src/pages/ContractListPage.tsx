@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchContracts } from '../api/api';
 import { Contract } from '../types';
+import { useAuth } from '../hooks/useAuth';
 
 export default function ContractListPage() {
+  const { isTenant } = useAuth();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
@@ -39,9 +41,11 @@ export default function ContractListPage() {
           <h2>Danh sách hợp đồng</h2>
           <p className="text-muted">Xem danh sách hợp đồng và thời hạn.</p>
         </div>
-        <Link className="button button-primary" to="/contracts/new">
-          Thêm hợp đồng
-        </Link>
+        {!isTenant && (
+          <Link className="button button-primary" to="/contracts/new">
+            Thêm hợp đồng
+          </Link>
+        )}
       </div>
       <div className="list-controls">
         <input

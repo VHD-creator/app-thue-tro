@@ -3,7 +3,8 @@ import { NguoiThue, HopDong, HoaDon, Phong } from '../models/quanHe.js';
 import { 
   verifyToken,
   requireChuTroOrAdmin, 
-  requireAuthenticated 
+  requireAuthenticated,
+  loadChuTro 
 } from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -110,7 +111,7 @@ router.get('/tat-ca', verifyToken, requireChuTroOrAdmin, async (req, res) => {
 // ==================== CHỦ TRỌ / ADMIN ====================
 
 // GET /api/nguoiThue - Danh sách người thuê đang có hợp đồng
-router.get('/', verifyToken, requireChuTroOrAdmin, async (req, res) => {
+router.get('/', verifyToken, requireChuTroOrAdmin, loadChuTro, async (req, res) => {
   try {
     let whereHopDong = { trang_thai: 1 };
 

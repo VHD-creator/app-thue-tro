@@ -30,6 +30,8 @@ export type RegisterPayload = {
   ho_ten: string;
   email: string;
   so_dien_thoai: string;
+  so_tai_khoan?: string;
+  ma_ngan_hang?: string;
 };
 
 export type LoginResponse = {
@@ -175,4 +177,48 @@ export type UserAccount = {
 export type UserActionResponse = {
   message: string;
   id_tai_khoan?: number;
+};
+// ================= VIETQR =================
+export type Bank = {
+  ma_bin: string;
+  ten_ngan_hang: string;
+  viettat?: string;
+  logo?: string;
+};
+
+export type VietQRResponse = {
+  hoa_don: {
+    id_hoa_don: number;
+    thang_nam: string;
+    tong_tien: number;
+    trang_thai: number;
+  };
+  thanh_toan: {
+    qr_url: string;
+    bank: string;
+    account_number: string;
+    amount: number;
+    content: string;
+    huong_dan: string[];
+  };
+};
+
+export type BankInfo = {
+  ho_ten: string;
+  so_tai_khoan: string;
+  ten_ngan_hang: string;
+  ma_ngan_hang: string;
+};
+
+export type YeuCauThue = {
+  id_yeu_cau: number;
+  id_phong: number;
+  id_nguoi_thue: number;
+  ngay_bat_dau_mong_muon: string;
+  ghi_chu?: string;
+  trang_thai: number;
+  ly_do_tu_choi?: string;
+  ngay_tao: string;
+  Phong?: { id_phong: number; ten_phong: string; gia_phong: number; mo_ta?: string };
+  NguoiThue?: { id_nguoi_thue: number; ho_ten: string; so_dien_thoai?: string; email?: string; cccd?: string };
 };

@@ -1,10 +1,11 @@
 import express from 'express';
+import { Op } from 'sequelize';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { TaiKhoan, ChuTro, NguoiThue } from '../models/quanHe.js';
 import { verifyToken } from '../middlewares/auth.js';
-import { guiEmailXacThuc } from '../services/emailService.js';
+import { guiEmailXacThuc, guiEmailQuenMatKhau } from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -392,6 +393,93 @@ router.post('/resend-verification', async (req, res) => {
     });
   } catch (error) {
     console.error('Resend verification error:', error);
+    return res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// ==================== QUÊN MẬT KHẨU ====================
+// POST /api/auth/forgot-password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Vui lòng cung cấp email' });
+    }
+
+    // 1. Tìm email trong ChuTro hoặc NguoiThue
+    let person = await ChuTro.findOne({ where: { email } });
+    if (!person) {
+      person = await NguoiThue.findOne({ where: { email } });
+    }
+
+    if (!person || !person.id_tai_khoan) {
+      return res.status(404).json({ message: 'Email không tồn tại trên hệ thống' });
+    }
+
+    const user = await TaiKhoan.findByPk(person.id_tai_khoan);
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy tài khoản liên kết' });
+    }
+
+    // 2. Tạo mã OTP 6 số và hết hạn (15 phút)
+    const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetExpiry = new Date(Date.now() + 15 * 60000); // 15 phút
+
+    await user.update({
+      reset_password_token: resetToken,
+      reset_password_expiry: resetExpiry
+    });
+
+    // 3. Gửi email
+    await guiEmailQuenMatKhau(email, person.ho_ten, resetToken);
+
+    return res.json({
+      message: 'Email khôi phục mật khẩu đã được gửi. Vui lòng kiểm tra hộp thư.'
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    return res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+});
+
+// ==================== ĐẶT LẠI MẬT KHẨU ====================
+// POST /api/auth/reset-password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, new_password } = req.body;
+
+    if (!token || !new_password) {
+      return res.status(400).json({ message: 'Thiếu token hoặc mật khẩu mới' });
+    }
+
+    if (new_password.length < 6) {
+      return res.status(400).json({ message: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
+    }
+
+    // 1. Tìm user với token hợp lệ
+    const user = await TaiKhoan.findOne({
+      where: {
+        reset_password_token: token,
+        reset_password_expiry: { [Op.gt]: new Date() } // Chưa hết hạn
+      }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Token không hợp lệ hoặc đã hết hạn' });
+    }
+
+    // 2. Hash mật khẩu mới và cập nhật
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+    await user.update({
+      mat_khau: hashedPassword,
+      reset_password_token: null,
+      reset_password_expiry: null
+    });
+
+    return res.json({ message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
     return res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 });

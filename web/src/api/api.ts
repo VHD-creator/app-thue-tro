@@ -64,6 +64,22 @@ export async function resendVerificationEmail(email: string): Promise<{ message:
   });
 }
 
+export async function forgotPassword(email: string): Promise<{ message: string }> {
+  return fetchJson<{ message: string }>(`${BASE_URL}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+}
+
+export async function resetPassword(token: string, new_password: string): Promise<{ message: string }> {
+  return fetchJson<{ message: string }>(`${BASE_URL}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, new_password })
+  });
+}
+
 export async function sendChatbotMessage(message: string): Promise<{ reply: string }> {
   return fetchJson<{ reply: string }>(`${BASE_URL}/chatbot`, {
     method: 'POST',
@@ -335,3 +351,113 @@ export async function updateProfile(role: string, body: ProfileUpdatePayload): P
     body: JSON.stringify(body)
   });
 }
+// ==================== VIETQR ====================
+
+// Lấy danh sách ngân hàng
+export async function getBanks() {
+  return fetchJson<any[]>(`${BASE_URL}/vietqr/ngan-hang`, {
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
+// Lấy QR hóa đơn
+export async function getQrHoaDon(idHoaDon: number) {
+  return fetchJson<any>(`${BASE_URL}/vietqr/hoa-don/${idHoaDon}`, {
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+  });
+}
+
+// Chủ trọ cập nhật ngân hàng
+export async function updateBankInfo(body: {
+  so_tai_khoan: string;
+  ten_ngan_hang: string;
+  ma_ngan_hang: string;
+}) {
+  return fetchJson<any>(`${BASE_URL}/vietqr/chu-tro/ngan-hang`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(body)
+  });
+}
+
+// Lấy thông tin ngân hàng chủ trọ
+export async function getBankInfo() {
+  return fetchJson<any>(`${BASE_URL}/vietqr/chu-tro/ngan-hang`, {
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+  });
+}
+
+// Xác nhận thanh toán
+export async function confirmPayment(idHoaDon: number, body?: {
+  so_tien?: number;
+  ghi_chu?: string;
+}) {
+  return fetchJson<any>(`${BASE_URL}/vietqr/xac-nhan/${idHoaDon}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(body || {})
+  });
+}
+// ==================== ROOM DETAIL WITH INVOICES & CONTRACTS ====================
+
+/**
+ * Lấy chi tiết phòng + hợp đồng + hóa đơn
+ * - Người thuê: chỉ thấy hợp đồng & hóa đơn của chính mình
+ * - Chủ trọ/Admin: thấy tất cả
+ */
+export async function fetchRoomDetail(id: number): Promise<any> {
+  return fetchJson<any>(`${BASE_URL}/phong/${id}`, {
+    headers: { 
+      'Content-Type': 'application/json', 
+      ...getAuthHeaders() 
+    }
+  });
+}
+
+// ==================== YEU CAU THUE ====================
+
+export async function createYeuCauThue(body: any): Promise<any> {
+  return fetchJson<any>(`${BASE_URL}/yeuCauThue`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(body)
+  });
+}
+
+export async function fetchMyYeuCauThue(): Promise<any[]> {
+  return fetchJson<any[]>(`${BASE_URL}/yeuCauThue/cua-toi`, {
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+  });
+}
+
+export async function cancelYeuCauThue(id: number): Promise<any> {
+  return fetchJson<any>(`${BASE_URL}/yeuCauThue/${id}/huy`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+  });
+}
+
+export async function fetchAllYeuCauThue(status?: number): Promise<any[]> {
+  const url = status !== undefined ? `${BASE_URL}/yeuCauThue?trang_thai=${status}` : `${BASE_URL}/yeuCauThue`;
+  return fetchJson<any[]>(url, {
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+  });
+}
+
+export async function approveYeuCauThue(id: number, body: { ngay_ket_thuc: string; tien_coc: number }): Promise<any> {
+  return fetchJson<any>(`${BASE_URL}/yeuCauThue/${id}/duyet`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(body)
+  });
+}
+
+export async function rejectYeuCauThue(id: number, ly_do: string): Promise<any> {
+  return fetchJson<any>(`${BASE_URL}/yeuCauThue/${id}/tu-choi`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ ly_do_tu_choi: ly_do })
+  });
+}
+
+

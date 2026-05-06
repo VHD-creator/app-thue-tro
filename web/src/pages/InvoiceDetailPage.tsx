@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { fetchInvoiceById, fetchPaymentsByInvoice } from '../api/api';
 import { Invoice, Payment } from '../types';
+import { useAuth } from '../hooks/useAuth';
 
 export default function InvoiceDetailPage() {
+  const { isTenant } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -38,12 +40,16 @@ export default function InvoiceDetailPage() {
           </Link>
           {invoice ? (
             <>
-              <button className="button button-primary" onClick={() => navigate(`/payments/${invoice.id_hoa_don}`)}>
-                Thanh toán
-              </button>
-              <Link className="button button-secondary" to={`/invoices/${invoice.id_hoa_don}/edit`}>
-                Sửa hóa đơn
-              </Link>
+              {isTenant && invoice.trang_thai === 0 && (
+                <button className="button button-primary" onClick={() => navigate(`/payments/${invoice.id_hoa_don}`)}>
+                  Thanh toán
+                </button>
+              )}
+              {!isTenant && (
+                <Link className="button button-secondary" to={`/invoices/${invoice.id_hoa_don}/edit`}>
+                  Sửa hóa đơn
+                </Link>
+              )}
             </>
           ) : null}
         </div>

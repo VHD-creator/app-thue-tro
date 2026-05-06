@@ -30,6 +30,14 @@ const TaiKhoan = sequelize.define(
       type: DataTypes.INTEGER,
       defaultValue: 1,
     },
+    reset_password_token: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    reset_password_expiry: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     tableName: 'tai_khoan',

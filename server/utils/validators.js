@@ -16,13 +16,22 @@ export const validateStringLength = (str, min = 1, max = 255) => {
 
 export const validateDate = (dateStr) => {
   if (!dateStr) return false;
-  const regex = /^\d{2}-\d{2}-\d{4}$/;
-  if (!regex.test(dateStr)) return false;
-  const [d, m, y] = dateStr.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
-  return date.getFullYear() === y &&
-    date.getMonth() === m - 1 &&
-    date.getDate() === d;
+  // Chấp nhận cả DD-MM-YYYY và YYYY-MM-DD
+  const regexVN = /^\d{2}-\d{2}-\d{4}$/;
+  const regexISO = /^\d{4}-\d{2}-\d{2}$/;
+  
+  if (regexVN.test(dateStr)) {
+    const [d, m, y] = dateStr.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
+  }
+  
+  if (regexISO.test(dateStr)) {
+    const date = new Date(dateStr);
+    return !isNaN(date.getTime());
+  }
+
+  return false;
 };
 
 export const validateMonthYear = (str) => {
@@ -36,6 +45,7 @@ export const validateMonthYear = (str) => {
 export const isEndDateAfterStartDate = (startStr, endStr) => {
   if (!validateDate(startStr) || !validateDate(endStr)) return false;
   const toDate = (str) => {
+    if (str.split('-')[0].length === 4) return new Date(str); // ISO
     const [d, m, y] = str.split('-').map(Number);
     return new Date(y, m - 1, d);
   };

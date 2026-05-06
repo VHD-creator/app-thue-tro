@@ -33,13 +33,30 @@ const checkAndActivateContract = async (id_hop_dong) => {
 };
 
 // GET /api/thanhToan - Danh sách thanh toán
-router.get('/', async (req, res) => {
+router.get('/', verifyToken, async (req, res) => {
   try {
+    let whereHoaDon = {};
+    
+    if (req.userRole === 'CHU_TRO') {
+      const chuTro = await ChuTro.findOne({ where: { id_tai_khoan: req.userId } });
+      if (!chuTro) return res.json([]);
+      const activeRooms = await Phong.findAll({ where: { id_chu_tro: chuTro.id_chu_tro }, attributes: ['id_phong'] });
+      whereHoaDon.id_phong = activeRooms.map(p => p.id_phong);
+    } else if (req.userRole === 'NGUOI_THUE') {
+      const nguoiThue = await NguoiThue.findOne({ where: { id_tai_khoan: req.userId } });
+      if (!nguoiThue) return res.json([]);
+      const hopDongs = await HopDong.findAll({ where: { id_nguoi_thue: nguoiThue.id_nguoi_thue }, attributes: ['id_phong'] });
+      whereHoaDon.id_phong = hopDongs.map(hd => hd.id_phong);
+    } else if (req.userRole !== 'ADMIN') {
+      return res.status(403).json({ error: 'Không có quyền truy cập' });
+    }
+
     const thanhToans = await ThanhToan.findAll({
       include: [
         {
           model: HoaDon,
           as: 'HoaDon',
+          where: whereHoaDon,
           attributes: ['id_hoa_don', 'id_phong', 'thang_nam', 'tong_tien'],
           include: [
             { model: Phong, as: 'Phong', attributes: ['ten_phong'] }
@@ -55,8 +72,25 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/thanhToan/hoa_don/:id_hoa_don - Danh sách thanh toán theo hóa đơn
-router.get('/hoa_don/:id_hoa_don', async (req, res) => {
+router.get('/hoa_don/:id_hoa_don', verifyToken, async (req, res) => {
   try {
+    const hoaDon = await HoaDon.findByPk(req.params.id_hoa_don, {
+      include: [{ model: Phong, as: 'Phong' }]
+    });
+    if (!hoaDon) return res.status(404).json({ error: 'Hóa đơn không tồn tại' });
+
+    // Kiểm tra quyền
+    if (req.userRole === 'CHU_TRO') {
+      const chuTro = await ChuTro.findOne({ where: { id_tai_khoan: req.userId } });
+      if (!chuTro || hoaDon.Phong.id_chu_tro !== chuTro.id_chu_tro) {
+        return res.status(403).json({ error: 'Bạn không có quyền xem thông tin này' });
+      }
+    } else if (req.userRole === 'NGUOI_THUE') {
+      const nguoiThue = await NguoiThue.findOne({ where: { id_tai_khoan: req.userId } });
+      const hopDong = await HopDong.findOne({ where: { id_nguoi_thue: nguoiThue?.id_nguoi_thue, id_phong: hoaDon.id_phong } });
+      if (!hopDong) return res.status(403).json({ error: 'Bạn không có quyền xem thông tin này' });
+    }
+
     const thanhToans = await ThanhToan.findAll({
       where: { id_hoa_don: req.params.id_hoa_don },
       include: [
@@ -75,7 +109,7 @@ router.get('/hoa_don/:id_hoa_don', async (req, res) => {
 });
 
 // GET /api/thanhToan/:id_thanh_toan - Chi tiết thanh toán
-router.get('/:id_thanh_toan', async (req, res) => {
+router.get('/:id_thanh_toan', verifyToken, async (req, res) => {
   try {
     const thanhToan = await ThanhToan.findByPk(req.params.id_thanh_toan, {
       include: [
@@ -84,14 +118,24 @@ router.get('/:id_thanh_toan', async (req, res) => {
           as: 'HoaDon',
           attributes: ['id_hoa_don', 'id_phong', 'thang_nam', 'tong_tien'],
           include: [
-            { model: Phong, as: 'Phong', attributes: ['ten_phong'] }
+            { model: Phong, as: 'Phong', attributes: ['id_chu_tro', 'ten_phong'] }
           ]
         }
       ]
     });
 
-    if (!thanhToan) {
-      return res.status(404).json({ error: 'Thanh toán không tồn tại' });
+    if (!thanhToan) return res.status(404).json({ error: 'Thanh toán không tồn tại' });
+
+    // Kiểm tra quyền
+    if (req.userRole === 'CHU_TRO') {
+      const chuTro = await ChuTro.findOne({ where: { id_tai_khoan: req.userId } });
+      if (!chuTro || thanhToan.HoaDon.Phong.id_chu_tro !== chuTro.id_chu_tro) {
+        return res.status(403).json({ error: 'Bạn không có quyền xem thông tin này' });
+      }
+    } else if (req.userRole === 'NGUOI_THUE') {
+      const nguoiThue = await NguoiThue.findOne({ where: { id_tai_khoan: req.userId } });
+      const hopDong = await HopDong.findOne({ where: { id_nguoi_thue: nguoiThue?.id_nguoi_thue, id_phong: thanhToan.HoaDon.id_phong } });
+      if (!hopDong) return res.status(403).json({ error: 'Bạn không có quyền xem thông tin này' });
     }
 
     res.json(thanhToan);

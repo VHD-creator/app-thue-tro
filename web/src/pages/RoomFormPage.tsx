@@ -206,7 +206,7 @@ export default function RoomFormPage({ user }: Props) {
                     overflow: 'hidden'
                   }}>
                     <img
-                      src={img.duong_dan}
+                      src={`http://localhost:3000${img.duong_dan}`}
                       alt={img.ten_file}
                       style={{
                         position: 'absolute',

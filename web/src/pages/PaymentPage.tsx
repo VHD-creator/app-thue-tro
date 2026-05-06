@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createPayment, fetchInvoiceById, fetchPaymentsByInvoice } from '../api/api';
+import { createPayment, fetchInvoiceById, fetchPaymentsByInvoice, getQrHoaDon } from '../api/api';
 import { Invoice, Payment } from '../types';
 
 const PAYMENT_METHODS = ['tiền mặt', 'VietQR - Chuyển khoản'];
@@ -16,6 +16,7 @@ export default function PaymentPage() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [totalPaid, setTotalPaid] = useState(0);
+  const [qrData, setQrData] = useState<any>(null);
 
   useEffect(() => {
     if (!invoiceId) return;
@@ -31,6 +32,17 @@ export default function PaymentPage() {
       })
       .catch(() => {});
   }, [invoiceId]);
+
+  useEffect(() => {
+    const isPaid = invoice ? invoice.tong_tien - totalPaid <= 0 : false;
+    if (method === 'VietQR - Chuyển khoản' && invoiceId && !isPaid) {
+      getQrHoaDon(Number(invoiceId))
+        .then(res => setQrData(res.thanh_toan))
+        .catch(err => setQrData({ error: err.message }));
+    } else {
+      setQrData(null);
+    }
+  }, [method, invoiceId, invoice, totalPaid]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -177,6 +189,30 @@ export default function PaymentPage() {
                 ))}
               </select>
             </div>
+
+            {method === 'VietQR - Chuyển khoản' && qrData && (
+              <div style={{ textAlign: 'center', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
+                {qrData.error ? (
+                  <p style={{ color: 'red' }}>{qrData.error}</p>
+                ) : (
+                  <>
+                    <h4>Quét mã để thanh toán</h4>
+                    <img src={qrData.qr_url} alt="VietQR" style={{ width: '100%', maxWidth: '250px', borderRadius: '8px', margin: '0 auto' }} />
+                    <div style={{ textAlign: 'left', marginTop: '16px', fontSize: '14px' }}>
+                      <p><strong>Ngân hàng:</strong> {qrData.bank}</p>
+                      <p><strong>STK:</strong> {qrData.account_number}</p>
+                      <p><strong>Nội dung:</strong> {qrData.content}</p>
+                      <ul style={{ paddingLeft: '20px', marginTop: '8px', color: '#666' }}>
+                        {qrData.huong_dan?.map((hd: string, i: number) => (
+                          <li key={i}>{hd}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             {error ? <div style={{ color: '#b91c1c', fontWeight: 600 }}>{error}</div> : null}
             {success ? <div style={{ color: '#0f766e', fontWeight: 600 }}>{success}</div> : null}
             <button type="submit" className="button button-primary" disabled={loading}>

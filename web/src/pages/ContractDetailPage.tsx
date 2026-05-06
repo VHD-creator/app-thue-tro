@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { fetchContractById } from '../api/api';
 import { Contract } from '../types';
+import { useAuth } from '../hooks/useAuth';
+import { formatDate, formatCurrency } from '../utils';
 
 export default function ContractDetailPage() {
+  const { isTenant } = useAuth();
   const { id } = useParams();
   const [contract, setContract] = useState<Contract | null>(null);
   const [error, setError] = useState('');
@@ -19,6 +22,33 @@ export default function ContractDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const handleDownloadPdf = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:3000/api/hopDong/${id}/pdf`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Bạn không có quyền tải hợp đồng này hoặc hợp đồng không tồn tại');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `HopDongThuePhong_${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Lỗi tải PDF');
+    }
+  };
+
   return (
     <div>
       <div className="section-title">
@@ -27,14 +57,20 @@ export default function ContractDetailPage() {
           <p className="text-muted">Thông tin hợp đồng chi tiết.</p>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
+          <button className="button button-primary" onClick={handleDownloadPdf} style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#10b981' }}>
+            📄 Tải Bản In (PDF)
+          </button>
           <Link className="button button-secondary" to="/contracts">
             Quay lại
           </Link>
-          <Link className="button button-primary" to={`/contracts/${id}/edit`}>
-            Sửa hợp đồng
-          </Link>
+          {!isTenant && (
+            <Link className="button button-primary" to={`/contracts/${id}/edit`}>
+              Sửa hợp đồng
+            </Link>
+          )}
         </div>
       </div>
+
       {loading ? (
         <div className="panel">Đang tải hợp đồng...</div>
       ) : error ? (
@@ -49,13 +85,13 @@ export default function ContractDetailPage() {
             <strong>Người thuê:</strong> {contract.NguoiThue?.ho_ten || contract.id_nguoi_thue}
           </p>
           <p>
-            <strong>Thời gian:</strong> {contract.ngay_bat_dau} → {contract.ngay_ket_thuc}
+            <strong>Thời gian:</strong> {formatDate(contract.ngay_bat_dau)} → {formatDate(contract.ngay_ket_thuc)}
           </p>
           <p>
-            <strong>Tiền cọc:</strong> {contract.tien_coc?.toLocaleString() || 'Chưa có'} VNĐ
+            <strong>Tiền cọc:</strong> {formatCurrency(contract.tien_coc)}
           </p>
           <p>
-            <strong>Trạng thái:</strong> {contract.trang_thai === 1 ? 'Đang hoạt động' : 'Không hoạt động'}
+            <strong>Trạng thái:</strong> {contract.trang_thai === 1 ? 'Đang hoạt động' : contract.trang_thai === 2 ? 'Chờ duyệt' : 'Không hoạt động'}
           </p>
         </div>
       ) : (

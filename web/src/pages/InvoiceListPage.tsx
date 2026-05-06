@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchInvoices } from '../api/api';
 import { Invoice } from '../types';
-
+import { useAuth } from '../hooks/useAuth';
 
 const statusClass = (status: number) => {
   switch (status) {
@@ -16,6 +16,7 @@ const statusClass = (status: number) => {
 };
 
 export default function InvoiceListPage() {
+  const { isTenant } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
@@ -49,9 +50,11 @@ export default function InvoiceListPage() {
           <h2>Danh sách hóa đơn</h2>
           <p className="text-muted">Xem trạng thái và tổng tiền hóa đơn.</p>
         </div>
-        <Link className="button button-primary" to="/invoices/new">
-          Thêm hóa đơn
-        </Link>
+        {!isTenant && (
+          <Link className="button button-primary" to="/invoices/new">
+            Thêm hóa đơn
+          </Link>
+        )}
       </div>
       <div className="list-controls">
         <input

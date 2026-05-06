@@ -1,218 +1,141 @@
 import jwt from 'jsonwebtoken';
 import { TaiKhoan, ChuTro, Phong } from '../models/quanHe.js';
 
-// ==================== VERIFY TOKEN ====================
-// ✅ Dùng decoded.id — nhất quán với token được tạo trong auth.js
+// ================= VERIFY TOKEN =================
 export const verifyToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Không tìm thấy token. Vui lòng đăng nhập' });
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Chưa đăng nhập' });
     }
 
-    const token = authHeader.substring(7);
+    const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // ✅ Tìm user bằng decoded.id
-    const taiKhoan = await TaiKhoan.findByPk(decoded.id);
+    const user = await TaiKhoan.findByPk(decoded.id, {
+      attributes: ['id_tai_khoan', 'vai_tro', 'trang_thai']
+    });
 
-    if (!taiKhoan) {
-      return res.status(401).json({ error: 'Token không hợp lệ' });
-    }
+    if (!user) return res.status(401).json({ error: 'Token không hợp lệ' });
+    if (user.trang_thai !== 1) return res.status(403).json({ error: 'Tài khoản bị khóa' });
 
-    if (taiKhoan.trang_thai !== 1) {
-      return res.status(403).json({ error: 'Tài khoản đã bị khóa' });
-    }
-
-    // ✅ Gắn thông tin vào request
-    req.user = taiKhoan;
-    req.userId = taiKhoan.id_tai_khoan;
-    req.userRole = taiKhoan.vai_tro;
+    req.user = user;
+    req.userId = user.id_tai_khoan;
+    req.userRole = user.vai_tro;
 
     next();
-  } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ error: 'Token không hợp lệ' });
-    }
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token đã hết hạn. Vui lòng đăng nhập lại' });
-    }
-    return res.status(500).json({ error: error.message });
+  } catch (err) {
+    return res.status(401).json({ error: 'Token lỗi hoặc hết hạn' });
   }
 };
 
-// Alias
-export const checkAuth = verifyToken;
-
-// ==================== OPTIONAL AUTH ====================
-// Không bắt buộc có token — nếu có thì parse, không có thì bỏ qua
+// ================= OPTIONAL AUTH =================
 export const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const taiKhoan = await TaiKhoan.findByPk(decoded.id);
-      if (taiKhoan && taiKhoan.trang_thai === 1) {
-        req.user = taiKhoan;
-        req.userId = taiKhoan.id_tai_khoan;
-        req.userRole = taiKhoan.vai_tro;
-      }
+
+    if (!authHeader?.startsWith('Bearer ')) {
+      return next();
     }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await TaiKhoan.findByPk(decoded.id, {
+      attributes: ['id_tai_khoan', 'vai_tro', 'trang_thai']
+    });
+
+    if (user && user.trang_thai === 1) {
+      req.user = user;
+      req.userId = user.id_tai_khoan;
+      req.userRole = user.vai_tro;
+    }
+
     next();
-  } catch (error) {
-    // Token không hợp lệ → vẫn cho qua nhưng không set user
+  } catch (err) {
     next();
   }
 };
 
-// ==================== REQUIRE ADMIN ====================
-export const requireAdmin = async (req, res, next) => {
+// ================= LOAD CHU TRO =================
+export const loadChuTro = async (req, res, next) => {
   try {
-    if (!req.user || !req.userRole) {
-      return res.status(401).json({ error: 'Vui lòng đăng nhập' });
-    }
-    if (req.userRole !== 'ADMIN') {
-      return res.status(403).json({ error: 'Chỉ admin mới có quyền thực hiện' });
-    }
-    next();
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+    if (req.userRole !== 'CHU_TRO') return next();
 
-// ==================== REQUIRE CHU_TRO HOẶC ADMIN ====================
-// ✅ Nếu là CHU_TRO → tự động lấy id_chu_tro gắn vào req.idChuTro
-export const requireChuTroOrAdmin = async (req, res, next) => {
-  try {
-    if (!req.user || !req.userRole) {
-      return res.status(401).json({ error: 'Vui lòng đăng nhập' });
-    }
+    const chuTro = await ChuTro.findOne({
+      where: { id_tai_khoan: req.userId },
+      attributes: ['id_chu_tro', 'email_verified', 'phone_verified']
+    });
 
-    if (req.userRole !== 'CHU_TRO' && req.userRole !== 'ADMIN') {
-      return res.status(403).json({ error: 'Chỉ chủ trọ hoặc admin mới có quyền' });
-    }
-
-    // ✅ Lấy id_chu_tro cho chủ trọ
-    if (req.userRole === 'CHU_TRO') {
-      const chuTro = await ChuTro.findOne({
-        where: { id_tai_khoan: req.user.id_tai_khoan }
-      });
-
-      if (!chuTro) {
-        return res.status(400).json({
-          error: 'Không tìm thấy thông tin chủ trọ. Vui lòng liên hệ admin.'
-        });
-      }
-
-      req.idChuTro = chuTro.id_chu_tro;
-    }
-
-    next();
-  } catch (error) {
-    console.error('Middleware requireChuTroOrAdmin error:', error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// ==================== REQUIRE CHU_TRO ĐÃ XÁC THỰC EMAIL + SĐT ====================
-export const requireChuTroVerified = async (req, res, next) => {
-  try {
-    if (!req.user || !req.userRole) {
-      return res.status(401).json({ error: 'Vui lòng đăng nhập' });
-    }
-
-    if (req.userRole === 'ADMIN') return next();
-    if (req.userRole !== 'CHU_TRO') {
-      return res.status(403).json({ error: 'Chỉ chủ trọ mới có quyền truy cập' });
-    }
-
-    const chuTro = await ChuTro.findOne({ where: { id_tai_khoan: req.userId } });
     if (!chuTro) {
-      return res.status(404).json({ error: 'Không tìm thấy thông tin chủ trọ' });
+      return res.status(404).json({ error: 'Không tìm thấy chủ trọ' });
     }
 
-    if (!chuTro.email_verified || !chuTro.phone_verified) {
-      return res.status(403).json({
-        error: 'Bạn cần xác thực email và số điện thoại để thực hiện thao tác này'
-      });
-    }
+    req.chuTro = chuTro;
+    req.idChuTro = chuTro.id_chu_tro;
 
     next();
-  } catch (error) {
-    console.error('Middleware requireChuTroVerified error:', error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
-// ==================== REQUIRE AUTHENTICATED (bất kỳ vai trò nào) ====================
-export const requireAuthenticated = async (req, res, next) => {
-  try {
-    if (!req.user || !req.userRole) {
-      return res.status(401).json({ error: 'Vui lòng đăng nhập' });
-    }
-    next();
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+// ================= ROLE =================
+export const requireAdmin = (req, res, next) => {
+  if (req.userRole !== 'ADMIN') {
+    return res.status(403).json({ error: 'Chỉ admin' });
   }
+  next();
 };
 
-// ==================== CHECK PHONG OWNERSHIP ====================
-// ✅ Kiểm tra phòng có thuộc chủ trọ hiện tại không
+export const requireChuTroOrAdmin = (req, res, next) => {
+  if (!['CHU_TRO', 'ADMIN'].includes(req.userRole)) {
+    return res.status(403).json({ error: 'Không có quyền' });
+  }
+  next();
+};
+
+export const requireAuthenticated = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Chưa đăng nhập' });
+  }
+  next();
+};
+
+// ================= VERIFIED =================
+export const requireChuTroVerified = (req, res, next) => {
+  if (req.userRole === 'ADMIN') return next();
+
+  if (req.userRole !== 'CHU_TRO') {
+    return res.status(403).json({ error: 'Không có quyền' });
+  }
+
+  if (!req.chuTro?.email_verified) {
+    return res.status(403).json({ error: 'Tài khoản chưa xác thực email. Vui lòng kiểm tra hộp thư.' });
+  }
+
+  next();
+};
+
+// ================= CHECK PHONG =================
 export const checkPhongOwnership = async (req, res, next) => {
   try {
-    // Admin không cần check
     if (req.userRole === 'ADMIN') return next();
 
-    const { id_phong } = req.params;
-    const { id_phong: bodyIdPhong } = req.body;
-    const phongId = id_phong || bodyIdPhong;
-
+    const phongId = req.params.id_phong || req.body.id_phong;
     if (!phongId) return next();
 
     const phong = await Phong.findByPk(phongId);
+    if (!phong) return res.status(404).json({ error: 'Phòng không tồn tại' });
 
-    if (!phong) {
-      return res.status(404).json({ error: 'Phòng không tồn tại' });
-    }
-
-    if (req.userRole === 'CHU_TRO' && req.idChuTro && phong.id_chu_tro !== req.idChuTro) {
-      return res.status(403).json({ error: 'Bạn không có quyền quản lý phòng này' });
+    if (req.userRole === 'CHU_TRO' && phong.id_chu_tro !== req.idChuTro) {
+      return res.status(403).json({ error: 'Không có quyền' });
     }
 
     req.phong = phong;
     next();
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-};
-
-// ==================== REQUIRE OWNER OR ADMIN ====================
-export const requireOwnerOrAdmin = (getOwnerId) => {
-  return async (req, res, next) => {
-    try {
-      if (!req.user || !req.userRole) {
-        return res.status(401).json({ error: 'Vui lòng đăng nhập' });
-      }
-      if (req.userRole === 'ADMIN') return next();
-
-      const ownerId = await getOwnerId(req);
-      if (req.userId !== ownerId) {
-        return res.status(403).json({ error: 'Bạn không có quyền truy cập tài nguyên này' });
-      }
-      next();
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  };
-};
-
-// ==================== FILTER BY OWNER ====================
-export const filterByOwner = (req, query = {}) => {
-  if (req.userRole === 'ADMIN') return query;
-  if (req.userRole === 'CHU_TRO' && req.idChuTro) {
-    return { ...query, id_chu_tro: req.idChuTro };
-  }
-  return query;
 };
