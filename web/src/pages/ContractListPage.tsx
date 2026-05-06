@@ -31,7 +31,10 @@ export default function ContractListPage({ user }: { user: User }) {
 
     apiCall
       .then(setContracts)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Không tải được hợp đồng'))
+      .catch((err: unknown) => {
+        console.error('Lỗi tải hợp đồng:', err);
+        setError(err instanceof Error ? err.message : 'Không tải được hợp đồng');
+      })
       .finally(() => setLoading(false));
   }, [isTenant]);
 

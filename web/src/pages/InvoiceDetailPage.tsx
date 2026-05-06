@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { fetchInvoiceById, fetchPaymentsByInvoice } from '../api/api';
+import { downloadInvoicePdf, fetchInvoiceById, fetchPaymentsByInvoice } from '../api/api';
 import { Invoice, Payment, User } from '../types';
 
 export default function InvoiceDetailPage({ user }: { user: User }) {
@@ -11,6 +11,7 @@ export default function InvoiceDetailPage({ user }: { user: User }) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -26,6 +27,19 @@ export default function InvoiceDetailPage({ user }: { user: User }) {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const handleDownload = async () => {
+    if (!invoice) return;
+    try {
+      setDownloading(true);
+      const fileName = `HoaDon_${invoice.thang_nam}_Phong_${invoice.id_phong}.pdf`;
+      await downloadInvoicePdf(invoice.id_hoa_don, fileName);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div>
       <div className="section-title">
@@ -39,6 +53,9 @@ export default function InvoiceDetailPage({ user }: { user: User }) {
           </Link>
           {invoice ? (
             <>
+              <button className="button button-outline" onClick={handleDownload} disabled={downloading}>
+                {downloading ? 'Đang tải...' : 'Tải PDF'}
+              </button>
               {isTenant && invoice.trang_thai === 0 && (
                 <button className="button button-primary" onClick={() => navigate(`/payments/${invoice.id_hoa_don}`)}>
                   Thanh toán

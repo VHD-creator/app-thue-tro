@@ -508,3 +508,47 @@ export async function confirmPayment(idHoaDon: number, body?: {
     body: JSON.stringify(body || {})
   });
 }
+
+/**
+ * Tải PDF Hóa đơn
+ */
+export async function downloadInvoicePdf(id: number, fileName: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/hoaDon/${id}/pdf`, {
+    headers: { ...getAuthHeaders() }
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Không thể tải PDF hóa đơn');
+  }
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+}
+
+/**
+ * Tải PDF Hợp đồng
+ */
+export async function downloadContractPdf(id: number, fileName: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/hopDong/${id}/pdf`, {
+    headers: { ...getAuthHeaders() }
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Không thể tải PDF hợp đồng');
+  }
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+}
